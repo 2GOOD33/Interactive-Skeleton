@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Human Anatomy</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0ede6; --paper: #fdfbf7; --bone: #e8dfc8; --bone-stroke: #b8a88a;
+    --bone-hover: #f0c060; --bone-hover-stroke: #c07820;
+    --marking-hover: #e05030; --marking-hover-stroke: #801808;
+    --panel-bg: #1c1810; --panel-w: 210px;
+    --tooltip-bg: #1a1208; --tooltip-text: #f5f0e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: "Source Sans 3", sans-serif; display: flex; min-height: 100vh; }
+  /* ── SIDEBAR ── */
+  .panel {
+    width: var(--panel-w); min-width: var(--panel-w); max-width: var(--panel-w);
+    background: var(--panel-bg);
+    padding: 28px 14px 40px; display: flex; flex-direction: column; gap: 8px;
+    flex-shrink: 0; flex-grow: 0; position: sticky; top: 0; align-self: flex-start;
+    scrollbar-width: thin; scrollbar-color: #3a3020 transparent;
+  }
+  :fullscreen .panel,
+  :-webkit-full-screen .panel,
+  :-moz-full-screen .panel {
+    width: var(--panel-w) !important; min-width: var(--panel-w) !important;
+    max-width: var(--panel-w) !important; flex-shrink: 0 !important; flex-grow: 0 !important;
+  }
+  .panel-title {
+    font-family: "Libre Baskerville", serif; font-size: 11px; font-weight: 700;
+    color: #b8a870; letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #2e2818;
+  }
+  .sys-btn {
+    display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+    border-radius: 6px; cursor: pointer; transition: background 0.15s;
+    border: 1px solid transparent; user-select: none;
+  }
+  .sys-btn:hover { background: rgba(255,255,255,0.06); }
+  .sys-btn.active { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+  .sys-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    transition: transform 0.15s; box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+  }
+  .sys-btn:hover .sys-dot { transform: scale(1.25); }
+  .sys-btn.active .sys-dot { transform: scale(1.3); box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
+  .sys-label {
+    font-size: 11.5px; color: #c8b898; letter-spacing: 0.04em; line-height: 1.2;
+    transition: color 0.15s;
+  }
+  .sys-btn.active .sys-label { color: #e8dfc8; font-weight: 600; }
+  .panel-divider { height: 1px; background: #2e2818; margin: 4px 0; }
+  /* New styles for dropdown */
+  .system-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .sys-btn {
+    flex: 1;
+  }
+  .dropdown-arrow {
+    cursor: pointer;
+    font-size: 10px;
+    color: #c8b898;
+    margin-left: auto;
+    padding: 9px 10px;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .dropdown-arrow:hover {
+    color: #f0c060;
+    background: rgba(255,255,255,0.1);
+  }
+  .system-description {
+    margin-top: 8px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .description-text {
+    color: #c8b898;
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .clear-btn {
+    margin-top: 8px; padding: 8px 10px; background: #2a2418; border: 1px solid #3a3020;
+    border-radius: 6px; color: #908070; font-size: 11px; cursor: pointer; text-align: center;
+    transition: background 0.15s, color 0.15s; font-family: inherit;
+  }
+  .clear-btn:hover { background: #3a3020; color: #c8b898; }
+  .quiz-start-btn:hover { background: #3a2510 !important; color: #f0c060 !important; }
+  /* Quiz button hover styles */
+  .qbtn-dark:hover  { background: #3a3020 !important; color: #c8b898 !important; }
+  .qbtn-gold:hover  { background: #d4891a !important; }
+  .qbtn-end:hover   { background: rgba(192,120,32,0.15) !important; color: #f0c060 !important; }
+  /* ── MAIN CANVAS ── */
+  .canvas {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 40px; overflow-y: auto;
+  }
+  .canvas-header { text-align: center; margin-bottom: 16px; }
+  .canvas-header h1 {
+    font-family: "Libre Baskerville", serif; font-size: clamp(18px,2.5vw,28px);
+    font-weight: 700; color: #2a2018;
+  }
+  .canvas-header p { font-size: 13px; color: #7a6848; font-style: italic; margin-top: 4px; }
+  .diagram-wrap { width: 100%; max-width: 700px; }
+  #skeleton-svg {
+    width: 100%; height: auto; display: block;
+    filter: drop-shadow(0 6px 32px rgba(60,40,10,0.14));
+  }
+  /* Skull cranium highlight */
+  [data-name="Skull"]:hover .skull-cranium,
+  [data-name="Skull"].active .skull-cranium,
+  [data-name="Skull"].pinned .skull-cranium {
+    fill: var(--bone-hover) !important;
+    stroke: var(--bone-hover-stroke) !important;
+    filter: drop-shadow(0 0 6px rgba(192,120,32,0.55));
+  }
+  /* ── BONES ── */
+  .bone {
+    fill: var(--bone); stroke: var(--bone-stroke); stroke-width: 1.2;
+    transition: fill 0.15s, stroke 0.15s, filter 0.15s, stroke-width 0.15s; cursor: pointer;
+  }
+  .bone:hover, .bone.active {
+    fill: var(--bone-hover); stroke: var(--bone-hover-stroke);
+    filter: drop-shadow(0 0 6px rgba(192,120,32,0.55));
+  }
+  .marking {
+    fill: #c8b89a; stroke: #987850; stroke-width: 1;
+    transition: fill 0.15s, filter 0.15s; cursor: pointer; opacity: 0.85;
+  }
+  .marking:hover, .marking.active {
+    fill: var(--marking-hover); stroke: var(--marking-hover-stroke);
+    filter: drop-shadow(0 0 6px rgba(200,60,20,0.6)); opacity: 1;
+  }
+  /* ── ORGANS ── */
+  .sys-layer {
+    pointer-events: visiblePainted;
+  }
+  .sys-layer [data-type="organ"] {
+    cursor: pointer; transition: filter 0.15s, opacity 0.15s;
+  }
+  .sys-layer [data-type="organ"]:hover,
+  .sys-layer [data-type="organ"].active,
+  .sys-layer [data-type="organ"].pinned {
+    filter: brightness(1.25) drop-shadow(0 0 6px currentColor);
+    opacity: 1;
+  }
+  /* ── TOOLTIP ── */
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 9999;
+    background: var(--tooltip-bg); color: var(--tooltip-text);
+    padding: 7px 13px; border-radius: 5px; font-size: 12.5px;
+    font-family: "Source Sans 3", sans-serif; font-weight: 600;
+    white-space: nowrap; opacity: 0; transform: translateY(4px);
+    transition: opacity 0.12s, transform 0.12s;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.40);
+  }
+  #tooltip.visible { opacity: 1; transform: translateY(0); }
+  #tooltip .tt-type {
+    display: block; font-size: 9px; letter-spacing: 0.15em;
+    text-transform: uppercase; opacity: 0.55; font-weight: 400; margin-bottom: 2px;
+  }
+  /* ── LEGEND CHIPS ── */
+  .legend-bar {
+    display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #7a6848; }
+  .legend-swatch { width: 14px; height: 9px; border-radius: 2px; border: 1.5px solid; }
+  /* ── GRID BG ── */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(#e0d8c8 1px,transparent 1px), linear-gradient(90deg,#e0d8c8 1px,transparent 1px);
+    background-size: 40px 40px; opacity: 0.45;
+  }
+  .canvas, .panel { position: relative; z-index: 1; }
+  footer {
+    text-align: center; font-size: 11px; color: #9a8060;
+    font-family: "Libre Baskerville", serif; font-style: italic; margin-top: 10px;
+  }
+  .bone.pinned, .marking.pinned {
+    fill: var(--bone-hover) !important;
+    stroke: var(--bone-hover-stroke) !important;
+    filter: drop-shadow(0 0 8px rgba(192,120,32,0.7)) !important;
+  }
+  /* ── INFO CARD ── */
+  #info-card {
+    position: fixed;
+    z-index: 9999;
+    width: 260px;
+    background: #1c1810;
+    color: #f0ead8;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.50);
+    padding: 14px 16px;
+    font-family: "Source Sans 3", sans-serif;
+    pointer-events: auto;
+    display: none;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  #info-card.visible { display: block; }
+  #info-card .ic-type {
+    font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #c8a060; font-weight: 600; margin-bottom: 4px; display: block;
+  }
+  #info-card .ic-name {
+    font-family: "Libre Baskerville", serif;
+    font-size: 14px; font-weight: 700; color: #f5ead0;
+    margin-bottom: 8px; line-height: 1.3;
+  }
+  #info-card .ic-desc {
+    font-size: 11.5px; color: #b8a888; line-height: 1.55;
+  }
+  #info-card .ic-close {
+    position: absolute; top: 10px; right: 12px;
+    font-size: 15px; color: #706050; cursor: pointer;
+    background: none; border: none; font-family: inherit; padding: 0; line-height: 1;
+  }
+  #info-card .ic-close:hover { color: #c0a870; }
+  #info-card .ic-bar {
+    width: 28px; height: 3px; border-radius: 2px;
+    background: #c8a060; margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<aside class="panel">
+  <div class="panel-title">Body Systems</div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="digestive" onclick="toggleSystem('digestive')">
+            <div class="sys-dot" style="background:#D4694A;"></div>
+            <span class="sys-label">Digestive</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="digestive" onclick="toggleDescription('digestive')">▼</span>
+        </div>
+        <div class="system-description" id="desc-digestive" style="display:none;">
+          <div class="description-text" id="sidebar-desc-digestive"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="respiratory" onclick="toggleSystem('respiratory')">
+            <div class="sys-dot" style="background:#5A9ED4;"></div>
+            <span class="sys-label">Respiratory</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="respiratory" onclick="toggleDescription('respiratory')">▼</span>
+        </div>
+        <div class="system-description" id="desc-respiratory" style="display:none;">
+          <div class="description-text" id="sidebar-desc-respiratory"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="circulatory" onclick="toggleSystem('circulatory')">
+            <div class="sys-dot" style="background:#C43030;"></div>
+            <span class="sys-label">Circulatory</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="circulatory" onclick="toggleDescription('circulatory')">▼</span>
+        </div>
+        <div class="system-description" id="desc-circulatory" style="display:none;">
+          <div class="description-text" id="sidebar-desc-circulatory"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="nervous" onclick="toggleSystem('nervous')">
+            <div class="sys-dot" style="background:#D4A030;"></div>
+            <span class="sys-label">Nervous</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="nervous" onclick="toggleDescription('nervous')">▼</span>
+        </div>
+        <div class="system-description" id="desc-nervous" style="display:none;">
+          <div class="description-text" id="sidebar-desc-nervous"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="urinary" onclick="toggleSystem('urinary')">
+            <div class="sys-dot" style="background:#30A0B0;"></div>
+            <span class="sys-label">Urinary</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="urinary" onclick="toggleDescription('urinary')">▼</span>
+        </div>
+        <div class="system-description" id="desc-urinary" style="display:none;">
+          <div class="description-text" id="sidebar-desc-urinary"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="endocrine" onclick="toggleSystem('endocrine')">
+            <div class="sys-dot" style="background:#9030C4;"></div>
+            <span class="sys-label">Endocrine</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="endocrine" onclick="toggleDescription('endocrine')">▼</span>
+        </div>
+        <div class="system-description" id="desc-endocrine" style="display:none;">
+          <div class="description-text" id="sidebar-desc-endocrine"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="lymphatic" onclick="toggleSystem('lymphatic')">
+            <div class="sys-dot" style="background:#309060;"></div>
+            <span class="sys-label">Lymphatic</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="lymphatic" onclick="toggleDescription('lymphatic')">▼</span>
+        </div>
+        <div class="system-description" id="desc-lymphatic" style="display:none;">
+          <div class="description-text" id="sidebar-desc-lymphatic"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="reproductive" onclick="toggleSystem('reproductive')">
+            <div class="sys-dot" style="background:#C43080;"></div>
+            <span class="sys-label">Reproductive</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="reproductive" onclick="toggleDescription('reproductive')">▼</span>
+        </div>
+        <div class="system-description" id="desc-reproductive" style="display:none;">
+          <div class="description-text" id="sidebar-desc-reproductive"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="muscular" onclick="toggleSystem('muscular')">
+            <div class="sys-dot" style="background:#903050;"></div>
+            <span class="sys-label">Muscular</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="muscular" onclick="toggleDescription('muscular')">▼</span>
+        </div>
+        <div class="system-description" id="desc-muscular" style="display:none;">
+          <div class="description-text" id="sidebar-desc-muscular"></div>
+        </div>
+        <div class="system-container">
+          <div class="sys-btn" data-sys="integumentary" onclick="toggleSystem('integumentary')">
+            <div class="sys-dot" style="background:#D4A882;"></div>
+            <span class="sys-label">Integumentary</span>
+          </div>
+          <span class="dropdown-arrow" data-desc="integumentary" onclick="toggleDescription('integumentary')">▼</span>
+        </div>
+        <div class="system-description" id="desc-integumentary" style="display:none;">
+          <div class="description-text" id="sidebar-desc-integumentary"></div>
+        </div>
+  <div class="panel-divider"></div>
+  <div class="system-container">
+    <div class="sys-btn active" id="skeleton-toggle-btn" data-sys="skeletal" onclick="toggleSkeleton()" style="border-color:rgba(184,168,138,0.6);">
+      <div class="sys-dot" style="background:#b8a88a;"></div>
+      <span class="sys-label">Skeletal</span>
+    </div>
+    <span class="dropdown-arrow" data-desc="skeletal" onclick="toggleDescription('skeletal')">▼</span>
+  </div>
+  <div class="system-description" id="desc-skeletal" style="display:none;">
+    <div class="description-text" id="sidebar-desc-skeletal"></div>
+  </div>
+  <div class="panel-divider"></div>
+  <button class="clear-btn" onclick="selectAll()" style="margin-bottom:6px;">Select All</button>
+  <button class="clear-btn" onclick="clearAll()" style="margin-bottom:6px;">Clear All</button>
+  <button class="clear-btn quiz-start-btn" onclick="openQuizSetup()" style="margin-top:2px;background:#2a1c10;border-color:#c07820;color:#c8a060;font-weight:600;">Quiz Mode</button>
+</aside>
+<div class="canvas">
+  <div class="canvas-header">
+    <h1>The Human Skeleton</h1>
+    <p style="font-size:11px; color:#9a8060; font-style:italic; margin-top:2px;">Made by Clifton Noronha & Gabe Yen</p>
+    <p>Select a system to reveal its organs · Hover any structure to identify</p>
+  </div>
+  <div class="legend-bar">
+    <div class="legend-item"><div class="legend-swatch" style="background:#e8dfc8;border-color:#b8a88a;"></div><span>Bone</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#c8b89a;border-color:#987850;"></div><span>Bone Marking</span></div>
+  </div>
+  <div class="diagram-wrap">
+<svg id="skeleton-svg" viewBox="0 0 800 1125" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="800" height="1125" fill="#fdfbf7" rx="8"/>
+  <!-- ═══════════ BODY SYSTEM OVERLAYS ═══════════ -->
+  <!-- ─── DIGESTIVE SYSTEM ─── -->
+  <g id="sys-digestive" class="sys-layer" style="display:none">
+    <path data-name="Pancreas" data-type="organ"
+      d="M434,383 C446,381 457,382 461,387 C465,392 462,399 450,402
+         C438,405 420,403 402,399 C384,395 368,388 356,381
+         C346,375 343,367 349,362 C355,357 367,360 382,365
+         C397,370 414,379 426,382 C429,383 432,383 434,383Z"
+      fill="#D48858" fill-opacity="0.80" stroke="#A86030" stroke-width="1.2"/>
+    <path data-name="Liver Lobe" data-type="organ"
+      d="M404,278 C384,274 348,276 330,287 C316,296 313,315 316,334
+         C319,353 327,370 339,382 C351,394 367,398 384,393
+         C401,388 410,376 413,360 C416,344 411,323 406,305
+         C403,291 404,284 404,278Z"
+      fill="#D4694A" fill-opacity="0.78" stroke="#A84828" stroke-width="1.2"/>
+    <path data-name="Liver Lobe" data-type="organ"
+      d="M404,278 C409,274 422,274 435,278 C448,282 457,293 459,308
+         C461,323 456,339 446,348 C436,357 422,359 411,353
+         C400,347 396,334 399,319 C402,304 404,290 404,278Z"
+      fill="#D4694A" fill-opacity="0.72" stroke="#A84828" stroke-width="1.2"/>
+    <ellipse data-name="Gallbladder" data-type="organ" cx="344" cy="394" rx="10" ry="15"
+      fill="#C05830" fill-opacity="0.85" stroke="#A84828" stroke-width="1"/>
+    <path data-name="Stomach" data-type="organ"
+      d="M432,297 C444,298 456,308 460,324 C464,340 460,360 452,372
+         C444,384 432,390 421,389 C410,388 402,379 400,364
+         C398,349 402,330 408,313 C414,298 422,296 432,297Z"
+      fill="#D4694A" fill-opacity="0.85" stroke="#A84828" stroke-width="1.2"/>
+    <path data-name="Gastroesophageal Junction" data-type="organ"
+      d="M400,291 C402,296 406,304 408,313"
+      fill="none" stroke="#D4694A" stroke-width="6" stroke-linecap="round" opacity="0.90"/>
+    <rect data-name="Esophagus" data-type="organ" x="397" y="163" width="6" height="130" rx="3"
+      fill="#D4694A" fill-opacity="0.80" stroke="#A84828" stroke-width="1"/>
+    <path data-name="Pylorus" data-type="organ"
+      d="M421,389 C415,390 408,390 400,390"
+      fill="none" stroke="#D4694A" stroke-width="7" stroke-linecap="round" opacity="0.90"/>
+    <path data-name="Duodenum" data-type="organ"
+      d="M400,390 C385,390 370,396 362,412 C354,428 357,450 368,461
+         C379,472 394,474 402,468"
+      fill="none" stroke="#D4694A" stroke-width="10" stroke-linecap="round" opacity="0.82"/>
+    <g data-name="Small Intestine" data-type="organ" pointer-events="visiblePainted" fill="#E8956D" fill-opacity="0.72" stroke="#C06840" stroke-width="0.8">
+      <ellipse cx="418" cy="449" rx="26" ry="11" transform="rotate(18,418,449)"/>
+      <ellipse cx="389" cy="451" rx="24" ry="10" transform="rotate(-12,389,451)"/>
+      <ellipse cx="397" cy="469" rx="28" ry="11" transform="rotate(5,397,469)"/>
+      <ellipse cx="427" cy="468" rx="24" ry="10" transform="rotate(-22,427,468)"/>
+      <ellipse cx="440" cy="451" rx="20" ry="9"  transform="rotate(28,440,451)"/>
+      <ellipse cx="420" cy="485" rx="27" ry="11" transform="rotate(-6,420,485)"/>
+      <ellipse cx="389" cy="484" rx="25" ry="10" transform="rotate(12,389,484)"/>
+      <ellipse cx="380" cy="464" rx="19" ry="9"  transform="rotate(-18,380,464)"/>
+      <ellipse cx="407" cy="499" rx="29" ry="11" transform="rotate(8,407,499)"/>
+      <ellipse cx="438" cy="495" rx="23" ry="9"  transform="rotate(-20,438,495)"/>
+      <ellipse cx="378" cy="496" rx="21" ry="9"  transform="rotate(15,378,496)"/>
+      <ellipse cx="396" cy="512" rx="25" ry="10" transform="rotate(-4,396,512)"/>
+      <ellipse cx="424" cy="510" rx="22" ry="9"  transform="rotate(10,424,510)"/>
+    </g>
+    <path data-name="Descending Colon" data-type="organ"
+      d="M338,508 C337,488 336,462 338,440 C340,420 348,406 359,402"
+      fill="none" stroke="#B85030" stroke-width="13" stroke-linecap="round" opacity="0.82"/>
+    <path data-name="Transverse Colon" data-type="organ"
+      d="M359,402 C366,398 382,395 400,396 C418,397 436,398 452,400 C466,401 477,405 481,411"
+      fill="none" stroke="#B85030" stroke-width="13" stroke-linecap="round" opacity="0.82"/>
+    <path data-name="Ascending Colon" data-type="organ"
+      d="M481,411 C484,430 486,455 484,478 C482,501 474,518 462,522"
+      fill="none" stroke="#B85030" stroke-width="13" stroke-linecap="round" opacity="0.82"/>
+    <path data-name="Sigmoid Colon" data-type="organ"
+      d="M462,522 C454,530 440,534 426,532 C412,530 401,521 398,509"
+      fill="none" stroke="#B85030" stroke-width="13" stroke-linecap="round" opacity="0.82"/>
+    <circle data-name="Cecum" data-type="organ" cx="340" cy="509" r="12"
+      fill="#B85030" fill-opacity="0.85" stroke="#904020" stroke-width="1"/>
+    <path data-name="Appendix" data-type="organ"
+      d="M338,517 C333,527 333,537 339,541"
+      fill="none" stroke="#904020" stroke-width="5" stroke-linecap="round"/>
+    <path data-name="Rectum" data-type="organ"
+      d="M398,509 C395,520 394,534 396,546 C398,558 404,564 410,562
+         C416,560 420,550 420,538 C420,526 416,514 410,508"
+      fill="#B85030" fill-opacity="0.80" stroke="#904020" stroke-width="1.2"/>
+  </g>
+  <!-- ─── RESPIRATORY SYSTEM ─── -->
+  <g id="sys-respiratory" class="sys-layer" style="display:none">
+    <rect data-name="Trachea" data-type="organ" x="396" y="163" width="8" height="112" rx="4"
+      fill="#5A9ED4" fill-opacity="0.82" stroke="#2A6EA4" stroke-width="1"/>
+    <g fill="none" stroke="#7ABCE8" stroke-width="1.5" opacity="0.6">
+      <line x1="396" y1="174" x2="404" y2="174"/>
+      <line x1="396" y1="184" x2="404" y2="184"/>
+      <line x1="396" y1="194" x2="404" y2="194"/>
+      <line x1="396" y1="204" x2="404" y2="204"/>
+      <line x1="396" y1="214" x2="404" y2="214"/>
+      <line x1="396" y1="224" x2="404" y2="224"/>
+      <line x1="396" y1="234" x2="404" y2="234"/>
+      <line x1="396" y1="244" x2="404" y2="244"/>
+      <line x1="396" y1="254" x2="404" y2="254"/>
+      <line x1="396" y1="264" x2="404" y2="264"/>
+    </g>
+    <path data-name="Bronchi" data-type="organ"
+      d="M400,275 L386,290 M400,275 L414,290"
+      fill="none" stroke="#5A9ED4" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+    <path data-name="Bronchus" data-type="organ"
+      d="M386,290 L370,304 M386,290 L380,308"
+      fill="none" stroke="#5A9ED4" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Bronchus" data-type="organ"
+      d="M414,290 L430,304 M414,290 L420,308"
+      fill="none" stroke="#5A9ED4" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Lung" data-type="organ"
+      d="M408,274 C428,271 458,278 474,296 C490,314 492,344 482,370
+         C472,396 454,418 435,430 C418,440 404,438 399,428
+         L399,358 C406,348 416,346 422,354 L422,282 C421,277 416,274 408,274Z"
+      fill="#5A9ED4" fill-opacity="0.72" stroke="#2A6EA4" stroke-width="1.3"/>
+    <path d="M440,295 C448,318 452,345 448,372"
+      fill="none" stroke="#2A6EA4" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
+    <path data-name="Lung" data-type="organ"
+      d="M392,274 C372,271 340,276 324,290 C310,304 309,330 312,354
+         C315,378 323,400 335,416 C347,432 363,438 376,434
+         C389,430 395,420 395,408 L395,282 C395,277 394,274 392,274Z"
+      fill="#5A9ED4" fill-opacity="0.72" stroke="#2A6EA4" stroke-width="1.3"/>
+    <path d="M370,300 C355,318 345,340 348,364"
+      fill="none" stroke="#2A6EA4" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
+    <path d="M384,310 C368,332 360,358 364,385"
+      fill="none" stroke="#2A6EA4" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
+    <path data-name="Diaphragm" data-type="organ"
+      d="M308,435 C320,420 354,412 400,412 C446,412 480,420 492,435"
+      fill="none" stroke="#3A7EB4" stroke-width="4" stroke-linecap="round" opacity="0.80"/>
+  </g>
+  <!-- ─── CIRCULATORY SYSTEM ─── -->
+  <g id="sys-circulatory" class="sys-layer" style="display:none">
+    <path data-name="Inferior Vena Cava" data-type="organ"
+      d="M394,304 C392,340 391,390 392,440 C393,490 394,512 394,514"
+      fill="none" stroke="#8B1A1A" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Abdominal Aorta" data-type="organ"
+      d="M406,304 C408,340 409,390 408,440 C407,490 406,512 406,514"
+      fill="none" stroke="#C43030" stroke-width="6" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Common Iliac Arteries" data-type="organ"
+      d="M406,514 C412,528 426,544 440,555 M406,514 C400,528 386,544 372,555"
+      fill="none" stroke="#C43030" stroke-width="5" stroke-linecap="round" opacity="0.72"/>
+    <path data-name="Common Iliac Veins" data-type="organ"
+      d="M394,514 C388,528 374,544 360,555 M394,514 C400,528 414,544 428,555"
+      fill="none" stroke="#8B1A1A" stroke-width="4" stroke-linecap="round" opacity="0.65"/>
+    <path data-name="Superior Vena Cava" data-type="organ"
+      d="M394,268 C393,282 393,296 394,304"
+      fill="none" stroke="#8B1A1A" stroke-width="7" stroke-linecap="round" opacity="0.80"/>
+    <path data-name="Ascending Aorta" data-type="organ"
+      d="M408,304 C410,290 410,278 404,272"
+      fill="none" stroke="#C43030" stroke-width="7" stroke-linecap="round" opacity="0.80"/>
+    <path data-name="Aortic Arch" data-type="organ"
+      d="M404,272 C404,264 400,260 394,260 C388,260 384,264 384,272 C384,280 388,288 393,294"
+      fill="none" stroke="#C43030" stroke-width="6" stroke-linecap="round" opacity="0.80"/>
+    <path data-name="Descending Thoracic Aorta" data-type="organ"
+      d="M393,294 C392,300 392,302 393,304"
+      fill="none" stroke="#C43030" stroke-width="6" stroke-linecap="round" opacity="0.80"/>
+    <path data-name="Pulmonary Trunk" data-type="organ"
+      d="M410,308 C414,298 414,289 410,282 M410,282 L422,286 M410,282 L398,286"
+      fill="none" stroke="#C06060" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Heart" data-type="organ"
+      d="M428,298 C437,298 444,305 444,315 C444,325 439,334 432,340
+         C426,346 420,350 416,356 C412,362 410,368 410,372
+         C410,376 408,378 404,378 C400,378 398,376 398,372
+         C398,368 396,362 392,356 C388,350 382,344 378,338
+         C372,330 368,319 370,309 C372,300 379,295 387,296
+         C393,297 397,302 400,308 C403,302 407,297 414,296
+         C419,295 424,295 428,298Z"
+      fill="#C43030" fill-opacity="0.82" stroke="#941010" stroke-width="1.5"/>
+    <path d="M400,308 L400,375" fill="none" stroke="#A01818" stroke-width="0.8" opacity="0.6"/>
+    <path d="M427,332 C417,336 407,338 400,338 C393,338 383,336 373,332"
+      fill="none" stroke="#A01818" stroke-width="0.8" opacity="0.6"/>
+  </g>
+  <!-- ─── NERVOUS SYSTEM ─── -->
+  <g id="sys-nervous" class="sys-layer" style="display:none">
+    <ellipse data-name="Brain" data-type="organ" cx="400" cy="84" rx="38" ry="40"
+      fill="#D4A030" fill-opacity="0.88" stroke="#946800" stroke-width="1.3"/>
+    <line x1="400" y1="46" x2="400" y2="118" stroke="#7a5800" stroke-width="1.2" opacity="0.55"/>
+    <path d="M374,56 C382,50 392,48 400,48 C408,48 418,50 426,56" fill="none" stroke="#7a5800" stroke-width="1.2" opacity="0.6"/>
+    <path d="M366,70 C376,63 390,60 400,60 C410,60 424,63 434,70" fill="none" stroke="#7a5800" stroke-width="1.2" opacity="0.6"/>
+    <path d="M364,86 C375,79 390,76 400,76 C410,76 425,79 436,86" fill="none" stroke="#7a5800" stroke-width="1.2" opacity="0.6"/>
+    <path d="M368,101 C378,95 391,92 400,92 C409,92 422,95 432,101" fill="none" stroke="#7a5800" stroke-width="1.2" opacity="0.6"/>
+    <path data-name="Cerebellum" data-type="organ"
+      d="M380,116 C384,111 391,108 400,108 C409,108 416,111 420,116 C422,121 418,126 400,128 C382,126 378,121 380,116Z"
+      fill="#C49020" fill-opacity="0.90" stroke="#946800" stroke-width="1.1"/>
+    <rect data-name="Brain Stem" data-type="organ" x="396" y="122" width="8" height="18" rx="4"
+      fill="#C49020" fill-opacity="0.90" stroke="#946800" stroke-width="1"/>
+    <rect data-name="Spinal Cord" data-type="organ" x="398" y="140" width="4" height="378" rx="2"
+      fill="#D4A030" fill-opacity="0.80" stroke="#946800" stroke-width="0.8"/>
+    <g data-name="Cauda Equina" data-type="organ"
+      fill="none" stroke="#C49020" stroke-width="1.3" stroke-linecap="round" opacity="0.70">
+      <path d="M398,518 C394,532 388,548 383,564"/>
+      <path d="M399,518 C397,534 394,550 391,566"/>
+      <path d="M401,518 C403,534 406,550 409,566"/>
+      <path d="M402,518 C406,532 412,548 417,564"/>
+    </g>
+    <g data-name="Brachial Plexus" data-type="organ"
+      fill="none" stroke="#D4A030" stroke-width="1.6" stroke-linecap="round" opacity="0.72">
+      <path d="M391,198 C388,206 385,218 382,232 C378,248 373,262 366,272 C356,280 340,284 322,288"/>
+      <path d="M391,208 C388,216 384,230 380,246 C375,264 368,278 358,286 C346,294 330,298 312,300"/>
+      <path d="M391,218 C387,228 383,242 378,258 C372,276 364,292 352,300 C340,308 324,312 308,314"/>
+      <path d="M391,228 C387,238 382,252 376,268 C369,286 360,300 347,308 C334,316 318,318 302,318"/>
+    </g>
+    <g data-name="Brachial Plexus" data-type="organ"
+      fill="none" stroke="#D4A030" stroke-width="1.6" stroke-linecap="round" opacity="0.72">
+      <path d="M409,198 C412,206 415,218 418,232 C422,248 427,262 434,272 C444,280 460,284 478,288"/>
+      <path d="M409,208 C412,216 416,230 420,246 C425,264 432,278 442,286 C454,294 470,298 488,300"/>
+      <path d="M409,218 C413,228 417,242 422,258 C428,276 436,292 448,300 C460,308 476,312 492,314"/>
+      <path d="M409,228 C413,238 418,252 424,268 C431,286 440,300 453,308 C466,316 482,318 498,318"/>
+    </g>
+    <path data-name="Radial Nerve" data-type="organ" d="M310,296 C304,326 280,360 278,400 C276,440 278,490 278,540 C278,580 280,618 282,644" fill="none" stroke="#D4A030" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+    <path data-name="Median Nerve" data-type="organ" d="M308,296 C308,326 308,370 308,414 C308,454 308,498 308,540 C308,572 308,604 308,638" fill="none" stroke="#C49020" stroke-width="1.3" stroke-linecap="round" opacity="0.58"/>
+    <path data-name="Ulnar Nerve" data-type="organ" d="M305,298 C306,330 306,372 306,418 C306,460 306,504 307,546 C307,578 308,610 308,640" fill="none" stroke="#B89010" stroke-width="1.1" stroke-linecap="round" opacity="0.50"/>
+    <path data-name="Radial Nerve" data-type="organ" d="M490,296 C496,326 520,360 522,400 C524,440 522,490 522,540 C522,580 520,618 518,644" fill="none" stroke="#D4A030" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+    <path data-name="Median Nerve" data-type="organ" d="M492,296 C492,326 492,370 492,414 C492,454 492,498 492,540 C492,572 492,604 492,638" fill="none" stroke="#C49020" stroke-width="1.3" stroke-linecap="round" opacity="0.58"/>
+    <path data-name="Ulnar Nerve" data-type="organ" d="M495,298 C494,330 494,372 494,418 C494,460 494,504 493,546 C493,578 492,610 492,640" fill="none" stroke="#B89010" stroke-width="1.1" stroke-linecap="round" opacity="0.50"/>
+    <g data-name="Lumbosacral Plexus" data-type="organ" fill="none" stroke="#D4A030" stroke-width="1.6" stroke-linecap="round" opacity="0.68">
+      <path d="M396,470 C388,484 376,502 364,522 C352,542 344,564 340,588 C337,606 336,614 336,618"/>
+      <path d="M397,490 C390,506 380,526 370,548 C360,568 354,590 352,614 C351,618 350,620 350,624"/>
+      <path d="M404,470 C412,484 424,502 436,522 C448,542 456,564 460,588 C463,606 464,614 464,618"/>
+      <path d="M403,490 C410,506 420,526 430,548 C440,568 446,590 448,614 C449,618 450,620 450,624"/>
+    </g>
+    <path data-name="Femoral Nerve" data-type="organ" d="M348,618 C348,660 347,706 346,748 C345,784 344,816 344,834" fill="none" stroke="#D4A030" stroke-width="1.5" stroke-linecap="round" opacity="0.62"/>
+    <path data-name="Sciatic Nerve" data-type="organ" d="M336,618 C332,662 328,712 326,756 C324,796 324,834 326,870 C328,906 332,942 336,978" fill="none" stroke="#C49020" stroke-width="2.0" stroke-linecap="round" opacity="0.68"/>
+    <path data-name="Tibial Nerve" data-type="organ" d="M334,834 C334,870 333,912 333,952 C333,978 334,1000 335,1020" fill="none" stroke="#C49020" stroke-width="1.5" stroke-linecap="round" opacity="0.60"/>
+    <path data-name="Common Peroneal Nerve" data-type="organ" d="M362,830 C363,868 364,910 364,952 C364,978 364,1000 364,1018" fill="none" stroke="#B89010" stroke-width="1.3" stroke-linecap="round" opacity="0.52"/>
+    <path data-name="Femoral Nerve" data-type="organ" d="M452,618 C452,660 453,706 454,748 C455,784 456,816 456,834" fill="none" stroke="#D4A030" stroke-width="1.5" stroke-linecap="round" opacity="0.62"/>
+    <path data-name="Sciatic Nerve" data-type="organ" d="M464,618 C468,662 472,712 474,756 C476,796 476,834 474,870 C472,906 468,942 464,978" fill="none" stroke="#C49020" stroke-width="2.0" stroke-linecap="round" opacity="0.68"/>
+    <path data-name="Tibial Nerve" data-type="organ" d="M466,834 C466,870 467,912 467,952 C467,978 466,1000 465,1020" fill="none" stroke="#C49020" stroke-width="1.5" stroke-linecap="round" opacity="0.60"/>
+    <path data-name="Common Peroneal Nerve" data-type="organ" d="M438,830 C437,868 436,910 436,952 C436,978 436,1000 436,1018" fill="none" stroke="#B89010" stroke-width="1.3" stroke-linecap="round" opacity="0.52"/>
+  </g>
+  <!-- ─── URINARY SYSTEM ─── -->
+  <g id="sys-urinary" class="sys-layer" style="display:none">
+    <path data-name="Kidney" data-type="organ" d="M428,443 C436,441 446,443 452,451 C458,459 458,473 452,482 C446,491 435,494 426,491 C417,488 412,479 413,469 C414,459 420,445 428,443Z" fill="#30A0B0" fill-opacity="0.85" stroke="#1E7A8A" stroke-width="1.3"/>
+    <path d="M415,463 C417,467 417,475 415,479" fill="none" stroke="#1E7A8A" stroke-width="2.5" stroke-linecap="round"/>
+    <path data-name="Kidney" data-type="organ" d="M372,443 C364,441 354,443 348,451 C342,459 342,473 348,482 C354,491 365,494 374,491 C383,488 388,479 387,469 C386,459 380,445 372,443Z" fill="#30A0B0" fill-opacity="0.85" stroke="#1E7A8A" stroke-width="1.3"/>
+    <path d="M385,463 C383,467 383,475 385,479" fill="none" stroke="#1E7A8A" stroke-width="2.5" stroke-linecap="round"/>
+    <path data-name="Ureter" data-type="organ" d="M441,491 C442,504 442,524 440,542 C438,558 434,566 430,570" fill="none" stroke="#30A0B0" stroke-width="3" stroke-linecap="round" opacity="0.80"/>
+    <path data-name="Ureter" data-type="organ" d="M359,491 C358,504 358,524 360,542 C362,558 366,566 370,570" fill="none" stroke="#30A0B0" stroke-width="3" stroke-linecap="round" opacity="0.80"/>
+    <ellipse data-name="Urinary Bladder" data-type="organ" cx="400" cy="574" rx="30" ry="22" fill="#30A0B0" fill-opacity="0.80" stroke="#1E7A8A" stroke-width="1.3"/>
+    <path data-name="Urethra" data-type="organ" d="M400,596 L400,608" fill="none" stroke="#1E7A8A" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+    <path data-name="Adrenal Gland" data-type="organ" d="M435,436 C440,432 446,432 449,436 C452,440 451,446 447,449 C443,452 437,451 434,447 C431,443 431,440 435,436Z" fill="#48C0D0" fill-opacity="0.80" stroke="#2A90A0" stroke-width="1"/>
+    <path data-name="Adrenal Gland" data-type="organ" d="M365,436 C360,432 354,432 351,436 C348,440 349,446 353,449 C357,452 363,451 366,447 C369,443 369,440 365,436Z" fill="#48C0D0" fill-opacity="0.80" stroke="#2A90A0" stroke-width="1"/>
+  </g>
+  <!-- ─── ENDOCRINE SYSTEM ─── -->
+  <g id="sys-endocrine" class="sys-layer" style="display:none">
+    <ellipse data-name="Pituitary Gland" data-type="organ" cx="400" cy="96" rx="6" ry="5" fill="#9030C4" fill-opacity="0.90" stroke="#601094" stroke-width="1"/>
+    <ellipse data-name="Pineal Gland" data-type="organ" cx="396" cy="76" rx="4" ry="4" fill="#A040D4" fill-opacity="0.85" stroke="#601094" stroke-width="1"/>
+    <path data-name="Hypothalamus" data-type="organ" d="M390,88 C390,83 393,80 400,80 C407,80 410,83 410,88 C410,93 407,96 400,96 C393,96 390,93 390,88Z" fill="#8020B4" fill-opacity="0.75" stroke="#601094" stroke-width="0.8"/>
+    <path data-name="Thyroid Gland" data-type="organ" d="M418,167 C424,165 430,168 432,174 C434,180 430,188 423,191 C416,194 408,192 404,186 C402,182 402,176 404,172 C406,168 412,165 418,167Z" fill="#9030C4" fill-opacity="0.82" stroke="#601094" stroke-width="1.2"/>
+    <path data-name="Thyroid Gland" data-type="organ" d="M382,167 C376,165 370,168 368,174 C366,180 370,188 377,191 C384,194 392,192 396,186 C398,182 398,176 396,172 C394,168 388,165 382,167Z" fill="#9030C4" fill-opacity="0.82" stroke="#601094" stroke-width="1.2"/>
+    <rect data-name="Thyroid Gland" data-type="organ" x="396" y="178" width="8" height="6" rx="2" fill="#8020B4" fill-opacity="0.82" stroke="#601094" stroke-width="0.8"/>
+    <circle data-name="Parathyroid Gland" data-type="organ" cx="431" cy="172" r="3" fill="#C060E4" fill-opacity="0.90" stroke="#601094" stroke-width="0.8"/>
+    <circle data-name="Parathyroid Gland" data-type="organ" cx="431" cy="180" r="3" fill="#C060E4" fill-opacity="0.90" stroke="#601094" stroke-width="0.8"/>
+    <circle data-name="Parathyroid Gland" data-type="organ" cx="369" cy="172" r="3" fill="#C060E4" fill-opacity="0.90" stroke="#601094" stroke-width="0.8"/>
+    <circle data-name="Parathyroid Gland" data-type="organ" cx="369" cy="180" r="3" fill="#C060E4" fill-opacity="0.90" stroke="#601094" stroke-width="0.8"/>
+    <path data-name="Thymus" data-type="organ" d="M388,270 C382,268 376,272 374,280 C372,290 376,302 385,307 C390,310 396,310 400,308 C404,310 410,310 415,307 C424,302 428,290 426,280 C424,272 418,268 412,270 C408,268 404,268 400,270 C396,268 392,268 388,270Z" fill="#9030C4" fill-opacity="0.75" stroke="#601094" stroke-width="1.2"/>
+    <path data-name="Pancreas (Islets of Langerhans)" data-type="organ" d="M434,383 C446,381 457,382 461,387 C465,392 462,399 450,402 C438,405 420,403 402,399 C384,395 368,388 356,381 C346,375 343,367 349,362 C355,357 367,360 382,365 C397,370 414,379 426,382 C429,383 432,383 434,383Z" fill="#9030C4" fill-opacity="0.72" stroke="#601094" stroke-width="1.2"/>
+    <path data-name="Adrenal Gland" data-type="organ" d="M365,436 C360,432 353,432 350,437 C347,442 349,449 354,452 C359,455 365,453 368,448 C371,443 370,439 365,436Z" fill="#B040D4" fill-opacity="0.85" stroke="#601094" stroke-width="1"/>
+    <path data-name="Adrenal Gland" data-type="organ" d="M435,436 C440,432 447,432 450,437 C453,442 451,449 446,452 C441,455 435,453 432,448 C429,443 430,439 435,436Z" fill="#B040D4" fill-opacity="0.85" stroke="#601094" stroke-width="1"/>
+    <ellipse data-name="Gonad" data-type="organ" cx="426" cy="546" rx="12" ry="16" fill="#9030C4" fill-opacity="0.75" stroke="#601094" stroke-width="1"/>
+    <ellipse data-name="Gonad" data-type="organ" cx="374" cy="546" rx="12" ry="16" fill="#9030C4" fill-opacity="0.75" stroke="#601094" stroke-width="1"/>
+  </g>
+  <!-- ─── LYMPHATIC/IMMUNE SYSTEM ─── -->
+  <g id="sys-lymphatic" class="sys-layer" style="display:none">
+    <ellipse data-name="Palatine Tonsil" data-type="organ" cx="416" cy="148" rx="8" ry="10" fill="#309060" fill-opacity="0.80" stroke="#106040" stroke-width="1"/>
+    <ellipse data-name="Palatine Tonsil" data-type="organ" cx="384" cy="148" rx="8" ry="10" fill="#309060" fill-opacity="0.80" stroke="#106040" stroke-width="1"/>
+    <path data-name="Thymus" data-type="organ" d="M388,270 C382,268 376,272 374,280 C372,290 376,302 385,307 C390,310 396,310 400,308 C404,310 410,310 415,307 C424,302 428,290 426,280 C424,272 418,268 412,270 C408,268 404,268 400,270 C396,268 392,268 388,270Z" fill="#309060" fill-opacity="0.72" stroke="#106040" stroke-width="1.2"/>
+    <path data-name="Spleen" data-type="organ" d="M490,296 C496,296 502,302 502,312 C502,326 494,342 482,352 C470,362 456,364 448,358 C440,352 440,340 446,328 C452,316 466,304 478,298 C482,296 486,296 490,296Z" fill="#309060" fill-opacity="0.82" stroke="#106040" stroke-width="1.3"/>
+    <path data-name="Thoracic Duct" data-type="organ" d="M403,440 C404,420 405,390 405,360 C405,330 404,300 403,274" fill="none" stroke="#309060" stroke-width="2" stroke-linecap="round" opacity="0.65" stroke-dasharray="4,3"/>
+    <ellipse data-name="Cisterna Chyli" data-type="organ" cx="403" cy="444" rx="5" ry="8" fill="#309060" fill-opacity="0.80" stroke="#106040" stroke-width="1"/>
+    <g data-name="Cervical Lymph Nodes" data-type="organ" fill="#40B070" fill-opacity="0.80" stroke="#106040" stroke-width="0.8">
+      <ellipse cx="422" cy="160" rx="5" ry="7"/><ellipse cx="430" cy="174" rx="5" ry="7"/>
+      <ellipse cx="378" cy="160" rx="5" ry="7"/><ellipse cx="370" cy="174" rx="5" ry="7"/>
+      <ellipse cx="426" cy="188" rx="4" ry="6"/><ellipse cx="374" cy="188" rx="4" ry="6"/>
+    </g>
+    <g data-name="Axillary Lymph Nodes" data-type="organ" fill="#40B070" fill-opacity="0.80" stroke="#106040" stroke-width="0.8">
+      <ellipse cx="484" cy="284" rx="6" ry="8"/><ellipse cx="492" cy="296" rx="5" ry="7"/>
+      <ellipse cx="316" cy="284" rx="6" ry="8"/><ellipse cx="308" cy="296" rx="5" ry="7"/>
+    </g>
+    <g data-name="Mesenteric Lymph Nodes" data-type="organ" fill="#40B070" fill-opacity="0.72" stroke="#106040" stroke-width="0.8">
+      <ellipse cx="408" cy="456" rx="4" ry="5"/><ellipse cx="392" cy="462" rx="4" ry="5"/>
+      <ellipse cx="416" cy="472" rx="4" ry="5"/><ellipse cx="384" cy="475" rx="4" ry="5"/>
+      <ellipse cx="405" cy="484" rx="4" ry="5"/><ellipse cx="393" cy="490" rx="4" ry="5"/>
+    </g>
+    <g data-name="Inguinal Lymph Nodes" data-type="organ" fill="#40B070" fill-opacity="0.80" stroke="#106040" stroke-width="0.8">
+      <ellipse cx="444" cy="604" rx="7" ry="9"/><ellipse cx="455" cy="617" rx="6" ry="8"/>
+      <ellipse cx="356" cy="604" rx="7" ry="9"/><ellipse cx="345" cy="617" rx="6" ry="8"/>
+    </g>
+    <g fill="none" stroke="#309060" stroke-width="1.2" opacity="0.50" stroke-dasharray="3,3">
+      <path d="M422,160 C428,190 432,220 430,260 C428,300 420,340 416,380"/>
+      <path d="M378,160 C372,190 368,220 370,260 C372,300 380,340 384,380"/>
+      <path d="M484,284 C486,320 488,360 486,400"/>
+      <path d="M316,284 C314,320 312,360 314,400"/>
+    </g>
+  </g>
+  <!-- ─── REPRODUCTIVE SYSTEM ─── -->
+  <g id="sys-reproductive" class="sys-layer" style="display:none">
+    <ellipse data-name="Ovary" data-type="organ" cx="428" cy="528" rx="14" ry="18" fill="#C43080" fill-opacity="0.82" stroke="#941050" stroke-width="1.3"/>
+    <ellipse data-name="Ovary" data-type="organ" cx="372" cy="528" rx="14" ry="18" fill="#C43080" fill-opacity="0.82" stroke="#941050" stroke-width="1.3"/>
+    <path data-name="Fallopian Tube" data-type="organ" d="M414,518 C420,510 430,505 440,506 C448,507 454,512 456,520" fill="none" stroke="#E050A0" stroke-width="3.5" stroke-linecap="round" opacity="0.82"/>
+    <path data-name="Fallopian Tube" data-type="organ" d="M386,518 C380,510 370,505 360,506 C352,507 346,512 344,520" fill="none" stroke="#E050A0" stroke-width="3.5" stroke-linecap="round" opacity="0.82"/>
+    <g fill="none" stroke="#E050A0" stroke-width="2" stroke-linecap="round" opacity="0.75">
+      <path d="M456,520 C458,524 456,530 452,532"/><path d="M456,520 C460,522 462,528 460,534"/>
+      <path d="M456,520 C462,520 466,524 464,530"/><path d="M344,520 C342,524 344,530 348,532"/>
+      <path d="M344,520 C340,522 338,528 340,534"/><path d="M344,520 C338,520 334,524 336,530"/>
+    </g>
+    <path data-name="Uterus" data-type="organ" d="M384,520 C378,520 372,524 370,532 C368,540 372,552 380,560 C388,568 396,572 400,572 C404,572 412,568 420,560 C428,552 432,540 430,532 C428,524 422,520 416,520 C410,518 406,520 400,520 C394,520 390,518 384,520Z" fill="#D44090" fill-opacity="0.82" stroke="#941050" stroke-width="1.5"/>
+    <path d="M390,530 L400,548 L410,530" fill="none" stroke="#A01060" stroke-width="1.2" opacity="0.6"/>
+    <path data-name="Cervix" data-type="organ" d="M394,570 C392,576 392,584 394,590 C396,596 400,598 400,598 C400,598 404,596 406,590 C408,584 408,576 406,570 Z" fill="#B83070" fill-opacity="0.82" stroke="#941050" stroke-width="1"/>
+    <path data-name="Broad Ligament" data-type="organ" d="M370,534 C360,534 352,532 348,530" fill="none" stroke="#D44090" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+    <path data-name="Broad Ligament" data-type="organ" d="M430,534 C440,534 448,532 452,530" fill="none" stroke="#D44090" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+    <path data-name="Vagina" data-type="organ" d="M396,598 C394,606 393,616 394,622 C395,628 398,630 400,630 C402,630 405,628 406,622 C407,616 406,606 404,598 Z" fill="#C43080" fill-opacity="0.75" stroke="#941050" stroke-width="1"/>
+  </g>
+  <!-- ─── MUSCULAR SYSTEM ─── -->
+  <g id="sys-muscular" class="sys-layer" style="display:none">
+    <path data-name="Sternocleidomastoid" data-type="organ" d="M390,136 C382,148 377,162 376,176 C380,175 384,172 388,168 C392,164 393,152 392,140Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1"/>
+    <path data-name="Sternocleidomastoid" data-type="organ" d="M410,136 C418,148 423,162 424,176 C420,175 416,172 412,168 C408,164 407,152 408,140Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1"/>
+    <path data-name="Pectoralis Major" data-type="organ" d="M390,270 C376,272 358,280 344,294 C330,308 325,326 328,342 C331,356 342,364 355,363 C368,362 378,352 384,338 C390,324 392,308 392,294 C392,282 391,274 390,270Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <path data-name="Pectoralis Major" data-type="organ" d="M410,270 C424,272 442,280 456,294 C470,308 475,326 472,342 C469,356 458,364 445,363 C432,362 422,352 416,338 C410,324 408,308 408,294 C408,282 409,274 410,270Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <path data-name="Deltoid" data-type="organ" d="M320,280 C308,284 300,294 300,308 C300,320 308,330 318,332 C328,334 338,328 341,316 C344,304 340,292 332,284 C328,280 324,279 320,280Z" fill="#A04060" fill-opacity="0.75" stroke="#701030" stroke-width="1"/>
+    <path data-name="Deltoid" data-type="organ" d="M480,280 C492,284 500,294 500,308 C500,320 492,330 482,332 C472,334 462,328 459,316 C456,304 460,292 468,284 C472,280 476,279 480,280Z" fill="#A04060" fill-opacity="0.75" stroke="#701030" stroke-width="1"/>
+    <path data-name="Biceps Brachii" data-type="organ" d="M295,295 C289,298 284,310 284,328 C284,346 290,365 298,374 C306,383 315,382 320,373 C325,364 325,346 320,328 C315,310 306,296 298,293 C297,292 296,294 295,295Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <path data-name="Biceps Brachii" data-type="organ" d="M505,295 C511,298 516,310 516,328 C516,346 510,365 502,374 C494,383 485,382 480,373 C475,364 475,346 480,328 C485,310 494,296 502,293 C503,292 504,294 505,295Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <rect data-name="Rectus Abdominis" data-type="organ" x="384" y="364" width="14" height="148" rx="6" fill="#A03848" fill-opacity="0.72" stroke="#701028" stroke-width="1"/>
+    <rect data-name="Rectus Abdominis" data-type="organ" x="402" y="364" width="14" height="148" rx="6" fill="#A03848" fill-opacity="0.72" stroke="#701028" stroke-width="1"/>
+    <g fill="none" stroke="#701028" stroke-width="0.8" opacity="0.5">
+      <line x1="384" y1="390" x2="398" y2="390"/><line x1="402" y1="390" x2="416" y2="390"/>
+      <line x1="384" y1="420" x2="398" y2="420"/><line x1="402" y1="420" x2="416" y2="420"/>
+      <line x1="384" y1="450" x2="398" y2="450"/><line x1="402" y1="450" x2="416" y2="450"/>
+    </g>
+    <path data-name="External Oblique" data-type="organ" d="M326,362 C318,374 314,394 316,418 C318,440 326,460 340,472 C352,482 366,482 374,472 C382,462 382,444 376,424 C370,404 358,382 344,368 C337,362 330,360 326,362Z" fill="#803040" fill-opacity="0.65" stroke="#601028" stroke-width="1"/>
+    <path data-name="External Oblique" data-type="organ" d="M474,362 C482,374 486,394 484,418 C482,440 474,460 460,472 C448,482 434,482 426,472 C418,462 418,444 424,424 C430,404 442,382 456,368 C463,362 470,360 474,362Z" fill="#803040" fill-opacity="0.65" stroke="#601028" stroke-width="1"/>
+    <path data-name="Quadriceps Femoris" data-type="organ" d="M334,616 C326,622 320,640 320,665 C320,692 328,720 338,742 C348,764 360,776 370,774 C380,772 385,758 384,736 C383,714 376,690 368,668 C360,646 350,624 340,614 C338,613 336,614 334,616Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <path data-name="Quadriceps Femoris" data-type="organ" d="M466,616 C474,622 480,640 480,665 C480,692 472,720 462,742 C452,764 440,776 430,774 C420,772 415,758 416,736 C417,714 424,690 432,668 C440,646 450,624 460,614 C462,613 464,614 466,616Z" fill="#903050" fill-opacity="0.72" stroke="#601030" stroke-width="1.2"/>
+    <path data-name="Gastrocnemius" data-type="organ" d="M334,835 C326,846 322,866 324,890 C326,914 336,934 348,942 C358,950 368,946 372,934 C376,922 372,904 366,886 C360,868 350,850 340,836 C338,833 336,833 334,835Z" fill="#7A2840" fill-opacity="0.70" stroke="#501020" stroke-width="1"/>
+    <path data-name="Gastrocnemius" data-type="organ" d="M466,835 C474,846 478,866 476,890 C474,914 464,934 452,942 C442,950 432,946 428,934 C424,922 428,904 434,886 C440,868 450,850 460,836 C462,833 464,833 466,835Z" fill="#7A2840" fill-opacity="0.70" stroke="#501020" stroke-width="1"/>
+  </g>
+  <!-- ─── INTEGUMENTARY SYSTEM ─── -->
+  <g id="sys-integumentary" class="sys-layer" style="display:none">
+    <g data-name="Skin — Body Surface" data-type="organ" pointer-events="visiblePainted">
+  <path fill="#D4A882" fill-opacity="0.28" stroke="#A47852" stroke-width="1.8"
+    d="M 400,37 C 416,37 432,43 443,57 C 454,71 458,90 454,109 C 451,123 444,131 442,135 C 447,141 448,153 445,163 C 442,171 435,175 428,177 C 423,179 421,181 420,185 C 420,215 421,245 425,262 C 433,264 448,267 462,272 C 466,274 469,277 470,278 C 500,280 506,284 510,294 C 514,310 514,336 512,370 C 510,404 506,438 504,462 C 520,494 516,520 515,548 C 514,574 516,600 517,618 C 518,632 516,646 508,651 C 500,657 490,652 487,638 C 485,624 486,604 486,578 C 486,554 485,530 484,522 C 490,538 494,560 494,582 C 494,598 492,614 490,628 C 488,638 484,647 476,648 C 472,658 470,678 468,706 C 466,732 462,768 460,800 C 459,815 460,826 464,828 C 470,830 477,840 478,856 C 478,874 473,896 469,920 C 465,948 463,978 465,1006 C 466,1020 468,1030 470,1038 C 476,1044 480,1054 479,1066 C 478,1075 474,1082 469,1085 C 472,1089 475,1095 475,1101 C 475,1108 470,1112 463,1112 L 426,1112 C 419,1112 414,1107 414,1100 C 414,1093 418,1087 423,1084 C 420,1082 417,1076 416,1068 C 415,1056 418,1044 421,1034 C 423,1022 424,1006 423,986 C 422,962 419,932 416,906 C 413,882 410,858 408,842 C 407,830 407,818 408,806 C 408,780 408,760 410,740 C 411,726 412,712 412,700 C 412,688 411,660 409,640 C 408,626 407,614 404,600 C 396,614 392,626 391,640 C 389,660 388,688 388,700 C 388,712 389,726 390,740 C 392,760 392,780 392,806 C 393,818 393,830 392,842 C 390,858 387,882 384,906 C 381,932 378,962 377,986 C 376,1006 377,1022 379,1034 C 382,1044 385,1056 384,1068 C 383,1076 380,1082 377,1084 C 382,1087 386,1093 386,1100 C 386,1107 381,1112 374,1112 L 337,1112 C 330,1112 325,1108 325,1101 C 325,1095 328,1089 331,1085 C 326,1082 322,1075 321,1066 C 320,1054 324,1044 330,1038 C 332,1030 334,1020 335,1006 C 337,978 335,948 331,920 C 327,896 322,874 322,856 C 323,840 328,830 334,828 C 338,826 339,815 338,800 C 336,768 332,732 330,706 C 328,678 326,658 322,648 C 314,647 310,638 308,628 C 306,614 304,598 304,582 C 304,564 308,542 312,522 C 311,534 310,558 310,578 C 310,604 311,624 309,638 C 307,652 297,657 289,651 C 281,646 279,632 280,618 C 281,600 283,574 281,548 C 282,518 284,492 288,466 C 296,438 290,404 290,370 C 286,336 286,310 290,294 C 294,284 300,280 309,276 C 318,274 324,277 326,279 C 330,278 334,275 338,272 C 352,268 368,264 375,262 C 379,245 380,215 380,185 C 379,181 377,179 372,177 C 365,175 358,171 355,163 C 352,153 353,141 358,135 C 356,131 349,123 346,109 C 342,90 346,71 357,57 C 368,43 384,37 400,37 Z"/>
+</g>
+    <g data-name="Nails" data-type="organ" fill="#d8c898" fill-opacity="0.85" stroke="#b0986a" stroke-width="0.8">
+      <rect x="279" y="620" width="5" height="8" rx="2"/><rect x="287" y="634" width="5" height="8" rx="2"/>
+      <rect x="295" y="634" width="5" height="8" rx="2"/><rect x="303" y="634" width="5" height="8" rx="2"/>
+      <rect x="311" y="634" width="5" height="8" rx="2"/>
+    </g>
+    <g data-name="Nails" data-type="organ" fill="#d8c898" fill-opacity="0.85" stroke="#b0986a" stroke-width="0.8">
+      <rect x="481" y="634" width="5" height="8" rx="2"/><rect x="489" y="634" width="5" height="8" rx="2"/>
+      <rect x="497" y="634" width="5" height="8" rx="2"/><rect x="505" y="634" width="5" height="8" rx="2"/>
+      <rect x="513" y="620" width="5" height="8" rx="2"/>
+    </g>
+    <g data-name="Nails" data-type="organ" fill="#d8c898" fill-opacity="0.85" stroke="#b0986a" stroke-width="0.8">
+      <rect x="326" y="1087" width="6" height="7" rx="2"/><rect x="335" y="1086" width="6" height="7" rx="2"/>
+      <rect x="344" y="1085" width="6" height="7" rx="2"/><rect x="353" y="1086" width="6" height="7" rx="2"/>
+      <rect x="362" y="1087" width="6" height="7" rx="2"/>
+    </g>
+    <g data-name="Nails" data-type="organ" fill="#d8c898" fill-opacity="0.85" stroke="#b0986a" stroke-width="0.8">
+      <rect x="463" y="1087" width="6" height="7" rx="2"/><rect x="454" y="1086" width="6" height="7" rx="2"/>
+      <rect x="445" y="1085" width="6" height="7" rx="2"/><rect x="436" y="1086" width="6" height="7" rx="2"/>
+      <rect x="427" y="1087" width="6" height="7" rx="2"/>
+    </g>
+  </g>
+  <!-- SKULL -->
+  <g class="bone" data-name="Skull" data-type="bone">
+    <path class="skull-cranium" d="M400,44 C417,44 433,50 443,62 C453,73 458,89 456,105 C455,118 449,127 442,128 L358,128 C351,127 345,118 344,105 C342,89 347,73 357,62 C367,50 383,44 400,44Z" fill="#e8dfc8" stroke="#b8a88a" stroke-width="1.2"/>
+    <path d="M370,90 C378,86 390,84 400,84 C410,84 422,86 430,90" fill="none" stroke="#c8b88a" stroke-width="1.6" stroke-linecap="round"/>
+    <ellipse cx="380" cy="104" rx="13" ry="10" fill="#b8a878" stroke="#987850" stroke-width="1.2"/>
+    <ellipse cx="380" cy="104" rx="9" ry="7" fill="#786850" stroke="none"/>
+    <ellipse cx="420" cy="104" rx="13" ry="10" fill="#b8a878" stroke="#987850" stroke-width="1.2"/>
+    <ellipse cx="420" cy="104" rx="9" ry="7" fill="#786850" stroke="none"/>
+    <rect x="397" y="114" width="6" height="8" rx="3" fill="#d8ceac" stroke="#b0a070" stroke-width="0.8"/>
+    <rect x="374" y="124" width="52" height="4" rx="2" fill="#ece6d0" stroke="#c0b080" stroke-width="0.8"/>
+    <line x1="381" y1="124" x2="381" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="388" y1="124" x2="388" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="394" y1="124" x2="394" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="400" y1="124" x2="400" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="406" y1="124" x2="406" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="412" y1="124" x2="412" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="419" y1="124" x2="419" y2="128" stroke="#c0b080" stroke-width="0.7"/>
+  </g>
+  <ellipse class="bone" cx="400" cy="70" rx="25" ry="16" data-name="Frontal" data-type="bone"/>
+  <!-- MANDIBLE -->
+  <g class="bone" data-name="Mandible" data-type="bone">
+    <path d="M358,128 C351,131 347,137 346,144 C345,151 347,158 352,162 C358,166 372,168 400,168 C428,168 442,166 448,162 C453,158 455,151 454,144 C453,137 449,131 442,128 Z"/>
+    <rect x="374" y="128" width="52" height="4" rx="2" fill="#ece6d0" stroke="#c0b080" stroke-width="0.8"/>
+    <line x1="381" y1="128" x2="381" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="388" y1="128" x2="388" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="394" y1="128" x2="394" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="400" y1="128" x2="400" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="406" y1="128" x2="406" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="412" y1="128" x2="412" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+    <line x1="419" y1="128" x2="419" y2="132" stroke="#c0b080" stroke-width="0.7"/>
+  </g>
+  <!-- CERVICAL VERTEBRAE -->
+  <g class="bone" data-name="Cervical Vertebrae (C1-C7)" data-type="bone">
+    <rect x="391" y="170" width="18" height="10" rx="3"/><rect x="391" y="183" width="18" height="10" rx="3"/>
+    <rect x="391" y="196" width="18" height="10" rx="3"/><rect x="391" y="209" width="18" height="10" rx="3"/>
+    <rect x="391" y="222" width="18" height="10" rx="3"/><rect x="391" y="235" width="18" height="10" rx="3"/>
+    <rect x="391" y="248" width="18" height="10" rx="3"/>
+    <line x1="391" y1="175" x2="380" y2="177" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="175" x2="420" y2="177" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="188" x2="378" y2="190" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="188" x2="422" y2="190" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="201" x2="377" y2="203" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="201" x2="423" y2="203" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="214" x2="377" y2="216" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="214" x2="423" y2="216" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="227" x2="377" y2="229" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="227" x2="423" y2="229" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="240" x2="376" y2="242" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="240" x2="424" y2="242" stroke="#b8a88a" stroke-width="1.5"/>
+    <line x1="391" y1="253" x2="376" y2="255" stroke="#b8a88a" stroke-width="1.5"/><line x1="409" y1="253" x2="424" y2="255" stroke="#b8a88a" stroke-width="1.5"/>
+  </g>
+  <!-- CLAVICLE — on each path for hover targeting -->
+  <g class="bone" data-name="Clavicle" data-type="bone">
+    <path d="M400,268 Q375,262 355,268 Q340,272 330,278" stroke="#b8a88a" stroke-width="6" fill="none" stroke-linecap="round" class="clavicle-bone"/>
+  </g>
+  <g class="bone" data-name="Clavicle" data-type="bone">
+    <path d="M400,268 Q425,262 445,268 Q460,272 470,278" stroke="#b8a88a" stroke-width="6" fill="none" stroke-linecap="round" class="clavicle-bone"/>
+  </g>
+  <!-- SCAPULA -->
+  <g class="bone" data-name="Scapula" data-type="bone">
+    <path d="M320,280 Q305,300 308,330 Q312,360 330,368 Q340,355 338,330 Q336,305 345,282 Z"/>
+    <path d="M322,290 Q335,285 345,282" stroke="#987850" stroke-width="2" fill="none"/>
+  </g>
+  <g class="bone" data-name="Scapula" data-type="bone">
+    <path d="M480,280 Q495,300 492,330 Q488,360 470,368 Q460,355 462,330 Q464,305 455,282 Z"/>
+    <path d="M478,290 Q465,285 455,282" stroke="#987850" stroke-width="2" fill="none"/>
+  </g>
+  <!-- THORACIC VERTEBRAE -->
+  <g class="bone" data-name="Thoracic Vertebrae (T1-T12)" data-type="bone">
+    <rect x="391" y="263" width="18" height="11" rx="3"/><rect x="391" y="277" width="18" height="11" rx="3"/>
+    <rect x="391" y="291" width="18" height="11" rx="3"/><rect x="391" y="305" width="18" height="11" rx="3"/>
+    <rect x="391" y="319" width="18" height="11" rx="3"/><rect x="391" y="333" width="18" height="11" rx="3"/>
+    <rect x="391" y="347" width="18" height="11" rx="3"/><rect x="391" y="361" width="18" height="11" rx="3"/>
+    <rect x="391" y="375" width="18" height="11" rx="3"/><rect x="391" y="389" width="18" height="11" rx="3"/>
+    <rect x="391" y="403" width="18" height="11" rx="3"/><rect x="391" y="417" width="18" height="11" rx="3"/>
+  </g>
+  <!-- STERNUM -->
+  <g class="bone" data-name="Sternum" data-type="bone">
+    <rect x="389" y="268" width="22" height="15" rx="4"/>
+    <rect x="392" y="283" width="16" height="68" rx="3"/>
+  </g>
+  <!-- XIPHOID PROCESS -->
+  <path class="marking" data-name="Xiphoid Process" data-type="marking"
+    d="M392,351 C392,354 393,360 396,366 C398,371 400,374 400,374 C400,374 402,371 404,366 C407,360 408,354 408,351 Z" opacity="0.85"/>
+  <!-- TRUE RIBS 1-7 — on each path for hover targeting -->
+  <g class="bone" data-name="True Ribs (1-7)" data-type="bone">
+    <path d="M391,276 Q360,273 338,283 Q320,295 322,310 Q338,303 360,293 Q378,285 391,287" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,289 Q355,285 330,297 Q310,311 312,327 Q330,317 355,305 Q376,296 391,300" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,302 Q353,298 326,312 Q305,328 307,345 Q325,333 352,319 Q375,308 391,313" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,315 Q351,312 323,327 Q302,344 304,361 Q323,348 350,333 Q374,320 391,326" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,328 Q350,325 322,341 Q300,359 302,377 Q321,363 350,347 Q374,333 391,340" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,341 Q350,339 323,356 Q301,375 304,393 Q323,378 351,361 Q375,347 391,354" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,354 Q351,352 325,370 Q305,390 307,407 Q326,392 353,375 Q376,361 391,367" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,276 Q440,273 462,283 Q480,295 478,310 Q462,303 440,293 Q422,285 409,287" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,289 Q445,285 470,297 Q490,311 488,327 Q470,317 445,305 Q424,296 409,300" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,302 Q447,298 474,312 Q495,328 493,345 Q475,333 448,319 Q425,308 409,313" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,315 Q449,312 477,327 Q498,344 496,361 Q477,348 450,333 Q426,320 409,326" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,328 Q450,325 478,341 Q500,359 498,377 Q479,363 450,347 Q426,333 409,340" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,341 Q450,339 477,356 Q499,375 496,393 Q477,378 449,361 Q425,347 409,354" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,354 Q449,352 475,370 Q495,390 493,407 Q474,392 447,375 Q424,361 409,367" fill="none" stroke="#b8a88a" stroke-width="5" stroke-linecap="round" class="rib-bone"/>
+  </g>
+  <!-- FALSE RIBS 8-10 -->
+  <g class="bone" data-name="False Ribs (8-10)" data-type="bone">
+    <path d="M391,367 Q358,367 335,381 Q318,395 322,411 Q337,399 360,385 Q378,375 391,379" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,380 Q359,380 336,395 Q319,409 323,425 Q338,412 362,398 Q379,387 391,392" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M391,393 Q360,393 338,409 Q321,424 325,439 Q340,425 364,410 Q381,399 391,405" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,367 Q442,367 465,381 Q482,395 478,411 Q463,399 440,385 Q422,375 409,379" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,380 Q441,380 464,395 Q481,409 477,425 Q462,412 438,398 Q421,387 409,392" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+    <path d="M409,393 Q440,393 462,409 Q479,424 475,439 Q460,425 436,410 Q419,399 409,405" fill="none" stroke="#b8a88a" stroke-width="4.5" stroke-linecap="round" class="rib-bone"/>
+  </g>
+  <!-- FLOATING RIBS 11-12 -->
+  <g class="bone" data-name="Floating Ribs (11-12)" data-type="bone">
+    <path d="M391,416 Q368,417 350,427 Q338,435 340,445" fill="none" stroke="#b8a88a" stroke-width="4" stroke-linecap="round" stroke-dasharray="5,3" class="rib-bone"/>
+    <path d="M391,429 Q369,430 352,440 Q341,449 343,459" fill="none" stroke="#b8a88a" stroke-width="4" stroke-linecap="round" stroke-dasharray="5,3" class="rib-bone"/>
+    <path d="M409,416 Q432,417 450,427 Q462,435 460,445" fill="none" stroke="#b8a88a" stroke-width="4" stroke-linecap="round" stroke-dasharray="5,3" class="rib-bone"/>
+    <path d="M409,429 Q431,430 448,440 Q459,449 457,459" fill="none" stroke="#b8a88a" stroke-width="4" stroke-linecap="round" stroke-dasharray="5,3" class="rib-bone"/>
+  </g>
+  <!-- LUMBAR VERTEBRAE -->
+  <g class="bone" data-name="Lumbar Vertebrae (L1-L5)" data-type="bone">
+    <rect x="388" y="430" width="24" height="14" rx="4"/><rect x="388" y="447" width="24" height="14" rx="4"/>
+    <rect x="388" y="464" width="24" height="14" rx="4"/><rect x="388" y="481" width="24" height="14" rx="4"/>
+    <rect x="388" y="498" width="24" height="14" rx="4"/>
+    <line x1="388" y1="437" x2="374" y2="437" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/><line x1="412" y1="437" x2="426" y2="437" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/>
+    <line x1="388" y1="454" x2="372" y2="454" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/><line x1="412" y1="454" x2="428" y2="454" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/>
+    <line x1="388" y1="471" x2="371" y2="471" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/><line x1="412" y1="471" x2="429" y2="471" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/>
+    <line x1="388" y1="488" x2="370" y2="488" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/><line x1="412" y1="488" x2="430" y2="488" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/>
+    <line x1="388" y1="505" x2="370" y2="505" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/><line x1="412" y1="505" x2="430" y2="505" stroke="#b8a88a" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <!-- SACRUM -->
+  <g class="bone" data-name="Sacrum" data-type="bone">
+    <path d="M380,514 Q376,528 378,545 Q380,558 400,562 Q420,558 422,545 Q424,528 420,514 Z"/>
+  </g>
+  <!-- COCCYX -->
+  <g class="bone" data-name="Coccyx" data-type="bone">
+    <path d="M392,563 Q390,572 392,580 Q396,584 400,585 Q404,584 408,580 Q410,572 408,563 Z"/>
+  </g>
+  <!-- PELVIS -->
+  <g class="bone" data-name="Pelvis" data-type="bone">
+    <path d="M380,514 Q355,510 335,520 Q315,532 310,550 Q308,570 316,585 Q328,600 342,605 Q358,608 368,595 Q375,580 375,560 Q378,538 380,514 Z"/>
+    <circle cx="342" cy="575" r="14" fill="#d8ccb0" stroke="#987850" stroke-width="1.5"/>
+  </g>
+  <g class="bone" data-name="Pelvis" data-type="bone">
+    <path d="M420,514 Q445,510 465,520 Q485,532 490,550 Q492,570 484,585 Q472,600 458,605 Q442,608 432,595 Q425,580 425,560 Q422,538 420,514 Z"/>
+    <circle cx="458" cy="575" r="14" fill="#d8ccb0" stroke="#987850" stroke-width="1.5"/>
+  </g>
+  <!-- FEMUR — drawn after pelvis so it renders on top -->
+  <g class="bone" data-name="Femur" data-type="bone">
+    <path d="M342,612 Q336,620 335,640 Q334,680 336,720 Q338,760 342,790 L362,790 Q366,760 368,720 Q370,680 368,640 Q367,620 360,612 Z"/>
+    <path d="M342,612 Q340,600 336,596 Q330,592 322,590 Q316,594 318,600 Q322,606 330,610 Q338,614 342,612 Z"/>
+    <path d="M328,589 Q322,591 318,596 Q316,600 318,600 Q322,594 328,591 Q332,589 336,590 Q332,589 328,589 Z"/>
+  </g>
+  <circle class="marking" cx="328" cy="588" r="14" data-name="Head of Femur" data-type="marking"/>
+  <path class="marking" d="M342,612 Q341,606 338,602 Q334,599 328,598 Q322,600 320,604 Q321,608 325,611 Q330,613 336,613 Q340,613 342,612 Z" data-name="Neck of Femur" data-type="marking" opacity="0.7"/>
+  <path class="marking" d="M338,602 Q334,597 328,593 Q322,591 318,593 Q316,597 318,601 Q320,605 325,607 Q330,608 334,606 Q337,604 338,602 Z" data-name="Greater Trochanter" data-type="marking" opacity="0.8"/>
+  <ellipse class="marking" cx="352" cy="793" rx="16" ry="8" data-name="Condyles" data-type="marking" opacity="0.8"/>
+  <g class="bone" data-name="Femur" data-type="bone">
+    <path d="M458,612 Q464,620 465,640 Q466,680 464,720 Q462,760 458,790 L438,790 Q434,760 432,720 Q430,680 432,640 Q433,620 440,612 Z"/>
+    <path d="M458,612 Q460,600 464,596 Q470,592 478,590 Q484,594 482,600 Q478,606 470,610 Q462,614 458,612 Z"/>
+    <path d="M472,589 Q478,591 482,596 Q484,600 484,600 Q478,594 472,591 Q468,589 464,590 Q468,589 472,589 Z"/>
+  </g>
+  <circle class="marking" cx="472" cy="588" r="14" data-name="Head of Femur" data-type="marking"/>
+  <path class="marking" d="M458,612 Q459,606 462,602 Q466,599 472,598 Q478,600 480,604 Q479,608 475,611 Q470,613 464,613 Q460,613 458,612 Z" data-name="Neck of Femur" data-type="marking" opacity="0.7"/>
+  <path class="marking" d="M462,602 Q466,597 472,593 Q478,591 482,593 Q484,597 482,601 Q480,605 475,607 Q470,608 466,606 Q463,604 462,602 Z" data-name="Greater Trochanter" data-type="marking" opacity="0.8"/>
+  <ellipse class="marking" cx="448" cy="793" rx="16" ry="8" data-name="Condyles" data-type="marking" opacity="0.8"/>
+  <!-- HUMERUS -->
+  <g class="bone" data-name="Humerus" data-type="bone">
+    <rect x="293" y="280" width="22" height="120" rx="10"/>
+    <path d="M293,400 Q290,415 295,425 Q304,430 315,425 Q320,415 315,400 Z"/>
+  </g>
+  <g class="bone" data-name="Humerus" data-type="bone">
+    <rect x="485" y="280" width="22" height="120" rx="10"/>
+    <path d="M507,400 Q510,415 505,425 Q496,430 485,425 Q480,415 485,400 Z"/>
+  </g>
+  <ellipse class="marking" cx="304" cy="282" rx="12" ry="10" data-name="Head of Humerus" data-type="marking"/>
+  <ellipse class="marking" cx="496" cy="282" rx="12" ry="10" data-name="Head of Humerus" data-type="marking"/>
+  <ellipse class="marking" cx="304" cy="332" rx="7" ry="12" data-name="Deltoid Tuberosity" data-type="marking" opacity="0.75"/>
+  <ellipse class="marking" cx="496" cy="332" rx="7" ry="12" data-name="Deltoid Tuberosity" data-type="marking" opacity="0.75"/>
+  <ellipse class="marking" cx="302" cy="422" rx="9" ry="6" data-name="Trochlea" data-type="marking" opacity="0.8"/>
+  <ellipse class="marking" cx="498" cy="422" rx="9" ry="6" data-name="Trochlea" data-type="marking" opacity="0.8"/>
+  <ellipse class="marking" cx="310" cy="422" rx="7" ry="5" data-name="Olecranon Fossa" data-type="marking" opacity="0.7"/>
+  <ellipse class="marking" cx="490" cy="422" rx="7" ry="5" data-name="Olecranon Fossa" data-type="marking" opacity="0.7"/>
+  <!-- RADIUS -->
+  <g class="bone" data-name="Radius" data-type="bone">
+    <path d="M296,432 Q288,445 284,480 Q280,510 282,545 L294,547 Q296,512 300,480 Q304,448 308,432 Z"/>
+  </g>
+  <ellipse class="marking" cx="293" cy="450" rx="7" ry="10" data-name="Radial Tuberosity" data-type="marking" opacity="0.75"/>
+  <g class="bone" data-name="Radius" data-type="bone">
+    <path d="M504,432 Q512,445 516,480 Q520,510 518,545 L506,547 Q504,512 500,480 Q496,448 492,432 Z"/>
+  </g>
+  <ellipse class="marking" cx="507" cy="450" rx="7" ry="10" data-name="Radial Tuberosity" data-type="marking" opacity="0.75"/>
+  <!-- ULNA -->
+  <g class="bone" data-name="Ulna" data-type="bone">
+    <path d="M308,432 Q314,445 316,480 Q318,512 316,547 L304,547 Q306,512 304,480 Q302,448 296,432 Z"/>
+  </g>
+  <path class="marking" d="M308,422 Q316,424 318,432 Q316,437 308,435 Q302,433 300,427 Q302,422 308,422 Z" data-name="Olecranon Process" data-type="marking" opacity="0.8"/>
+  <g class="bone" data-name="Ulna" data-type="bone">
+    <path d="M492,432 Q486,445 484,480 Q482,512 484,547 L496,547 Q494,512 496,480 Q498,448 504,432 Z"/>
+  </g>
+  <path class="marking" d="M492,422 Q484,424 482,432 Q484,437 492,435 Q498,433 500,427 Q498,422 492,422 Z" data-name="Olecranon Process" data-type="marking" opacity="0.8"/>
+  <!-- CARPALS -->
+  <g class="bone" data-name="Carpals" data-type="bone"><rect x="280" y="549" width="38" height="20" rx="5"/></g>
+  <g class="bone" data-name="Carpals" data-type="bone"><rect x="482" y="549" width="38" height="20" rx="5"/></g>
+  <!-- METACARPALS -->
+  <g class="bone" data-name="Metacarpals" data-type="bone">
+    <rect x="278" y="571" width="6" height="28" rx="3"/><rect x="286" y="571" width="6" height="28" rx="3"/>
+    <rect x="294" y="571" width="6" height="28" rx="3"/><rect x="302" y="571" width="6" height="28" rx="3"/>
+    <rect x="310" y="571" width="6" height="28" rx="3"/>
+  </g>
+  <g class="bone" data-name="Metacarpals" data-type="bone">
+    <rect x="480" y="571" width="6" height="28" rx="3"/><rect x="488" y="571" width="6" height="28" rx="3"/>
+    <rect x="496" y="571" width="6" height="28" rx="3"/><rect x="504" y="571" width="6" height="28" rx="3"/>
+    <rect x="512" y="571" width="6" height="28" rx="3"/>
+  </g>
+  <!-- PHALANGES HAND -->
+  <g class="bone" data-name="Phalanges - Hand" data-type="bone">
+    <rect x="278" y="601" width="6" height="16" rx="3"/><rect x="286" y="601" width="6" height="16" rx="3"/>
+    <rect x="294" y="601" width="6" height="16" rx="3"/><rect x="302" y="601" width="6" height="16" rx="3"/>
+    <rect x="310" y="601" width="6" height="16" rx="3"/>
+    <rect x="278" y="619" width="6" height="10" rx="3"/><rect x="286" y="619" width="6" height="12" rx="3"/>
+    <rect x="294" y="619" width="6" height="12" rx="3"/><rect x="302" y="619" width="6" height="12" rx="3"/>
+    <rect x="310" y="619" width="6" height="12" rx="3"/>
+    <rect x="286" y="633" width="6" height="10" rx="3"/><rect x="294" y="633" width="6" height="10" rx="3"/>
+    <rect x="302" y="633" width="6" height="10" rx="3"/><rect x="310" y="633" width="6" height="10" rx="3"/>
+  </g>
+  <g class="bone" data-name="Phalanges - Hand" data-type="bone">
+    <rect x="480" y="601" width="6" height="16" rx="3"/><rect x="488" y="601" width="6" height="16" rx="3"/>
+    <rect x="496" y="601" width="6" height="16" rx="3"/><rect x="504" y="601" width="6" height="16" rx="3"/>
+    <rect x="512" y="601" width="6" height="16" rx="3"/>
+    <rect x="480" y="619" width="6" height="12" rx="3"/><rect x="488" y="619" width="6" height="12" rx="3"/>
+    <rect x="496" y="619" width="6" height="12" rx="3"/><rect x="504" y="619" width="6" height="12" rx="3"/>
+    <rect x="480" y="633" width="6" height="10" rx="3"/><rect x="488" y="633" width="6" height="10" rx="3"/>
+    <rect x="496" y="633" width="6" height="10" rx="3"/><rect x="504" y="633" width="6" height="10" rx="3"/>
+    <rect x="512" y="619" width="6" height="10" rx="3"/>
+  </g>
+  <!-- PATELLA -->
+  <g class="bone" data-name="Patella" data-type="bone"><ellipse cx="352" cy="805" rx="14" ry="16"/></g>
+  <g class="bone" data-name="Patella" data-type="bone"><ellipse cx="448" cy="805" rx="14" ry="16"/></g>
+  <!-- TIBIA -->
+  <g class="bone" data-name="Tibia" data-type="bone">
+    <path d="M340,826 Q336,840 334,880 Q332,920 334,960 Q336,990 340,1010 L356,1010 Q360,990 362,960 Q364,920 362,880 Q360,840 358,826 Z"/>
+  </g>
+  <ellipse class="marking" cx="348" cy="1012" rx="10" ry="7" data-name="Medial Malleolus" data-type="marking" opacity="0.8"/>
+  <g class="bone" data-name="Tibia" data-type="bone">
+    <path d="M460,826 Q464,840 466,880 Q468,920 466,960 Q464,990 460,1010 L444,1010 Q440,990 438,960 Q436,920 438,880 Q440,840 442,826 Z"/>
+  </g>
+  <ellipse class="marking" cx="450" cy="1012" rx="10" ry="7" data-name="Medial Malleolus" data-type="marking" opacity="0.8"/>
+  <!-- FIBULA -->
+  <g class="bone" data-name="Fibula" data-type="bone"><rect x="326" y="830" width="10" height="182" rx="4"/></g>
+  <ellipse class="marking" cx="331" cy="1014" rx="9" ry="7" data-name="Lateral Malleolus" data-type="marking" opacity="0.8"/>
+  <g class="bone" data-name="Fibula" data-type="bone"><rect x="462" y="830" width="10" height="182" rx="4"/></g>
+  <ellipse class="marking" cx="467" cy="1014" rx="9" ry="7" data-name="Lateral Malleolus" data-type="marking" opacity="0.8"/>
+  <!-- TARSALS -->
+  <g class="bone" data-name="Tarsals" data-type="bone">
+    <path d="M324,1020 Q322,1030 324,1045 Q336,1060 357,1058 Q372,1055 374,1045 Q376,1030 368,1020 Z"/>
+  </g>
+  <g class="bone" data-name="Tarsals" data-type="bone">
+    <path d="M476,1020 Q478,1030 476,1045 Q464,1060 443,1058 Q428,1055 426,1045 Q424,1030 432,1020 Z"/>
+  </g>
+  <!-- METATARSALS -->
+  <g class="bone" data-name="Metatarsals" data-type="bone">
+    <rect x="325" y="1060" width="7" height="24" rx="3" transform="rotate(-5,329,1072)"/>
+    <rect x="334" y="1059" width="7" height="24" rx="3" transform="rotate(-2,338,1071)"/>
+    <rect x="343" y="1058" width="7" height="24" rx="3"/>
+    <rect x="352" y="1059" width="7" height="24" rx="3" transform="rotate(2,356,1071)"/>
+    <rect x="361" y="1060" width="7" height="24" rx="3" transform="rotate(5,365,1072)"/>
+  </g>
+  <g class="bone" data-name="Metatarsals" data-type="bone">
+    <rect x="462" y="1060" width="7" height="24" rx="3" transform="rotate(-5,466,1072)"/>
+    <rect x="453" y="1059" width="7" height="24" rx="3" transform="rotate(-2,457,1071)"/>
+    <rect x="444" y="1058" width="7" height="24" rx="3"/>
+    <rect x="435" y="1059" width="7" height="24" rx="3" transform="rotate(2,439,1071)"/>
+    <rect x="426" y="1060" width="7" height="24" rx="3" transform="rotate(5,430,1072)"/>
+  </g>
+  <!-- PHALANGES FOOT -->
+  <g class="bone" data-name="Phalanges - Foot" data-type="bone">
+    <rect x="325" y="1086" width="7" height="10" rx="3" transform="rotate(-5,329,1091)"/>
+    <rect x="334" y="1085" width="7" height="10" rx="3" transform="rotate(-2,338,1090)"/>
+    <rect x="343" y="1084" width="7" height="10" rx="3"/>
+    <rect x="352" y="1085" width="7" height="10" rx="3" transform="rotate(2,356,1090)"/>
+    <rect x="361" y="1086" width="7" height="10" rx="3" transform="rotate(5,365,1091)"/>
+  </g>
+  <g class="bone" data-name="Phalanges - Foot" data-type="bone">
+    <rect x="462" y="1086" width="7" height="10" rx="3" transform="rotate(-5,466,1091)"/>
+    <rect x="453" y="1085" width="7" height="10" rx="3" transform="rotate(-2,457,1090)"/>
+    <rect x="444" y="1084" width="7" height="10" rx="3"/>
+    <rect x="435" y="1085" width="7" height="10" rx="3" transform="rotate(2,439,1090)"/>
+    <rect x="426" y="1086" width="7" height="10" rx="3" transform="rotate(5,430,1091)"/>
+  </g>
+  <text class="always-visible" x="400" y="25" font-family="'Libre Baskerville',serif" font-size="10" fill="#a09070" text-anchor="middle" font-style="italic">Anterior View - Anatomical Position</text>
+</svg>
+  </div>
+  <footer>206 bones · Hover any structure to identify · Select a system to reveal organs</footer>
+</div>
+<div id="info-card">
+  <button class="ic-close" onclick="closeCard()">&#x2715;</button>
+  <div class="ic-bar" id="ic-bar"></div>
+  <span class="ic-type" id="ic-type"></span>
+  <div class="ic-name" id="ic-name"></div>
+  <div class="ic-desc" id="ic-desc"></div>
+</div>
+<div id="tooltip"><span class="tt-type" id="tt-type"></span><span id="tt-name"></span></div>
+<svg id="connector-svg" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9998;display:none"></svg>
+<script>
+  const activeSystems = new Set();
+  function initUniqueOrganInteraction() {
+    document.querySelectorAll('g[data-name][data-type="organ"]').forEach(group => {
+      const groupName = group.dataset.name;
+      if (groupName === "Skin — Body Surface" || groupName === "Small Intestine" || groupName === "Nails") return;
+      const groupType = group.dataset.type;
+      group.querySelectorAll('*').forEach(child => {
+        if (child === group) return;
+        if (child.matches('[data-name]')) return;
+        child.dataset.name = groupName;
+        child.dataset.type = groupType;
+        child.style.pointerEvents = 'visiblePainted';
+      });
+      group.removeAttribute('data-name');
+      group.removeAttribute('data-type');
+      group.style.pointerEvents = 'none';
+    });
+  }
+  initUniqueOrganInteraction();
+
+  // JS-based highlighting for ribs and clavicle — CSS can't override SVG presentation attributes on child paths
+  function highlightStrokes(group, on) {
+    group.querySelectorAll('.rib-bone, .clavicle-bone').forEach(p => {
+      if (on) {
+        p.style.stroke = '#f0c060';
+        p.style.filter = 'drop-shadow(0 0 1.5px #c07820) drop-shadow(0 0 6px rgba(192,120,32,0.55))';
+      } else {
+        p.style.stroke = '';
+        p.style.filter = '';
+      }
+    });
+  }
+  document.querySelectorAll('[data-name*="Ribs"], [data-name="Clavicle"]').forEach(group => {
+    group.addEventListener('mouseenter', () => highlightStrokes(group, true));
+    group.addEventListener('mouseleave', () => {
+      if (!group.classList.contains('pinned')) highlightStrokes(group, false);
+    });
+  });
+  function toggleSystem(sid) {
+    const btn = document.querySelector(`[data-sys="${sid}"]`);
+    const layer = document.getElementById(`sys-${sid}`);
+    if (activeSystems.has(sid)) {
+      activeSystems.delete(sid);
+      btn.classList.remove('active');
+      layer.style.display = 'none';
+    } else {
+      activeSystems.add(sid);
+      btn.classList.add('active');
+      layer.style.display = '';
+      const sysName = btn.querySelector('.sys-label')?.textContent || sid;
+      const sysColor = btn.querySelector('.sys-dot')?.style.background || '#c8a060';
+      showSystemCard(sid, sysName, sysColor, btn);
+    }
+  }
+  function clearAll() {
+    activeSystems.forEach(sid => {
+      document.querySelector(`[data-sys="${sid}"]`).classList.remove('active');
+      document.getElementById(`sys-${sid}`).style.display = 'none';
+    });
+    activeSystems.clear();
+    document.querySelectorAll('.system-description').forEach(desc => { desc.style.display = 'none'; });
+    document.querySelectorAll('.dropdown-arrow').forEach(arrow => { arrow.textContent = '▼'; });
+  }
+  const SYSTEMS = ['digestive','respiratory','circulatory','nervous','urinary','endocrine','lymphatic','reproductive','muscular','integumentary'];
+  function selectAll() {
+    SYSTEMS.forEach(sid => { if (!activeSystems.has(sid)) toggleSystem(sid); });
+    if (!skeletonVisible) toggleSkeleton();
+  }
+  let skeletonVisible = true;
+  function toggleSkeleton() {
+    skeletonVisible = !skeletonVisible;
+    const btn = document.getElementById('skeleton-toggle-btn');
+    btn.classList.toggle('active', skeletonVisible);
+    const bones = document.querySelectorAll('.bone, .marking');
+    bones.forEach(el => { el.style.visibility = skeletonVisible ? '' : 'hidden'; });
+    const labels = document.querySelectorAll('#skeleton-svg text:not(.always-visible)');
+    labels.forEach(el => { el.style.visibility = skeletonVisible ? '' : 'hidden'; });
+  }
+  function toggleDescription(sys) {
+    const desc  = document.getElementById(`desc-${sys}`);
+    const arrow = document.querySelector(`[data-desc="${sys}"]`);
+    if (desc.style.display === 'none' || desc.style.display === '') {
+      desc.style.display = 'block'; arrow.textContent = '▲';
+    } else {
+      desc.style.display = 'none'; arrow.textContent = '▼';
+    }
+  }
+  const tooltip = document.getElementById('tooltip');
+  const ttName = document.getElementById('tt-name');
+  const ttType = document.getElementById('tt-type');
+  const typeLabels = { bone: 'Bone', marking: 'Bone Marking', organ: 'Organ' };
+  let currentEl = null;
+  function showTip(e, el) {
+    const name = el.dataset.name;
+    const type = el.dataset.type;
+    if (!name) return;
+    ttName.textContent = name;
+    ttType.textContent = typeLabels[type] || type;
+    tooltip.classList.add('visible');
+    moveTip(e);
+    document.querySelectorAll('.active').forEach(activeEl => {
+      if (activeEl !== el && !activeEl.classList.contains('sys-btn')) activeEl.classList.remove('active');
+    });
+    el.classList.add('active');
+    currentEl = el;
+  }
+  function moveTip(e) {
+    const m = 14, tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    let l = e.clientX + m, t = e.clientY - th - m;
+    if (l + tw > window.innerWidth - 8) l = e.clientX - tw - m;
+    if (t < 8) t = e.clientY + m;
+    tooltip.style.left = l + 'px';
+    tooltip.style.top  = t + 'px';
+  }
+  function hideTip(el) {
+    tooltip.classList.remove('visible');
+    if (el) el.classList.remove('active');
+    currentEl = null;
+  }
+  document.querySelectorAll('[data-name]').forEach(el => {
+    el.addEventListener('mouseenter', e => showTip(e, el));
+    el.addEventListener('mousemove',  e => moveTip(e));
+    el.addEventListener('mouseleave', () => hideTip(el));
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const target = el.dataset.name ? el : e.target.closest('[data-name]');
+      if (target) openCard(e, target);
+    });
+  });
+  document.getElementById('skeleton-svg').addEventListener('click', function(e) {
+    const named = e.target.closest('[data-name]');
+    if (named) openCard(e, named);
+  });
+  document.getElementById('skeleton-svg').addEventListener('mouseenter', function(e) {
+    const named = e.target.closest('[data-name]');
+    if (named && named !== currentEl) showTip(e, named);
+  }, true);
+  document.getElementById('skeleton-svg').addEventListener('mousemove', function(e) { moveTip(e); }, true);
+  document.getElementById('skeleton-svg').addEventListener('mouseleave', function(e) {
+    const named = e.target.closest('[data-name]');
+    if (named) hideTip(named);
+  }, true);
+  const descriptions = {
+
+    // ── SKULL & FACE ──────────────────────────────────────────────────
+    "Skull":                              "Add your description here.",
+    "Frontal":                            "Add your description here.",
+    "Mandible":                           "Add your description here.",
+
+    // ── VERTEBRAL COLUMN ──────────────────────────────────────────────
+    "Cervical Vertebrae (C1-C7)":         "Add your description here.",
+    "Thoracic Vertebrae (T1-T12)":        "Add your description here.",
+    "Lumbar Vertebrae (L1-L5)":           "Add your description here.",
+    "Sacrum":                             "Add your description here.",
+    "Coccyx":                             "Add your description here.",
+
+    // ── THORAX ────────────────────────────────────────────────────────
+    "Sternum":                            "Add your description here.",
+    "Xiphoid Process":                    "Add your description here.",
+    "True Ribs (1-7)":                    "Add your description here.",
+    "False Ribs (8-10)":                  "Add your description here.",
+    "Floating Ribs (11-12)":              "Add your description here.",
+
+    // ── PECTORAL GIRDLE ───────────────────────────────────────────────
+    "Clavicle":                           "Add your description here.",
+    "Scapula":                            "Add your description here.",
+
+    // ── UPPER ARM ─────────────────────────────────────────────────────
+    "Humerus":                            "Add your description here.",
+    "Head of Humerus":                    "Add your description here.",
+    "Deltoid Tuberosity":                 "Add your description here.",
+    "Trochlea":                           "Add your description here.",
+    "Olecranon Fossa":                    "Add your description here.",
+
+    // ── FOREARM ───────────────────────────────────────────────────────
+    "Radius":                             "Add your description here.",
+    "Radial Tuberosity":                  "Add your description here.",
+    "Ulna":                               "Add your description here.",
+    "Olecranon Process":                  "Add your description here.",
+
+    // ── HAND ──────────────────────────────────────────────────────────
+    "Carpals":                            "Add your description here.",
+    "Metacarpals":                        "Add your description here.",
+    "Phalanges - Hand":                   "Add your description here.",
+
+    // ── PELVIS ────────────────────────────────────────────────────────
+    "Pelvis":                             "Add your description here.",
+
+    // ── UPPER LEG ─────────────────────────────────────────────────────
+    "Femur":                              "Add your description here.",
+    "Head of Femur":                      "Add your description here.",
+    "Greater Trochanter":                 "Add your description here.",
+    "Neck of Femur":                      "Add your description here.",
+    "Lateral Condyle":                    "Add your description here.",
+    "Patella":                            "Add your description here.",
+
+    // ── LOWER LEG ─────────────────────────────────────────────────────
+    "Tibia":                              "Add your description here.",
+    "Medial Malleolus":                   "Add your description here.",
+    "Fibula":                             "Add your description here.",
+    "Lateral Malleolus":                  "Add your description here.",
+
+    // ── FOOT ──────────────────────────────────────────────────────────
+    "Tarsals":                            "Add your description here.",
+    "Metatarsals":                        "Add your description here.",
+    "Phalanges - Foot":                   "Add your description here.",
+
+    // ── DIGESTIVE SYSTEM ──────────────────────────────────────────────
+    "Esophagus":                          "Add your description here.",
+    "Gastroesophageal Junction":          "Add your description here.",
+    "Stomach":                            "Add your description here.",
+    "Pylorus":                            "Add your description here.",
+    "Liver Lobe":                         "Add your description here.",
+    "Gallbladder":                        "Add your description here.",
+    "Pancreas":                           "Add your description here.",
+    "Duodenum":                           "Add your description here.",
+    "Small Intestine":                    "Add your description here.",
+    "Ascending Colon":                    "Add your description here.",
+    "Transverse Colon":                   "Add your description here.",
+    "Descending Colon":                   "Add your description here.",
+    "Sigmoid Colon":                      "Add your description here.",
+    "Cecum":                              "Add your description here.",
+    "Appendix":                           "Add your description here.",
+    "Rectum":                             "Add your description here.",
+
+    // ── RESPIRATORY SYSTEM ────────────────────────────────────────────
+    "Trachea":                            "Add your description here.",
+    "Bronchi":                            "Add your description here.",
+    "Bronchus":                           "Add your description here.",
+    "Lung":                               "Add your description here.",
+    "Diaphragm":                          "Add your description here.",
+
+    // ── CIRCULATORY SYSTEM ────────────────────────────────────────────
+    "Heart":                              "Add your description here.",
+    "Ascending Aorta":                    "Add your description here.",
+    "Aortic Arch":                        "Add your description here.",
+    "Descending Thoracic Aorta":          "Add your description here.",
+    "Abdominal Aorta":                    "Add your description here.",
+    "Common Iliac Arteries":              "Add your description here.",
+    "Superior Vena Cava":                 "Add your description here.",
+    "Inferior Vena Cava":                 "Add your description here.",
+    "Common Iliac Veins":                 "Add your description here.",
+    "Pulmonary Trunk":                    "Add your description here.",
+
+    // ── NERVOUS SYSTEM ────────────────────────────────────────────────
+    "Brain":                              "Add your description here.",
+    "Brain Stem":                         "Add your description here.",
+    "Cerebellum":                         "Add your description here.",
+    "Spinal Cord":                        "Add your description here.",
+    "Cauda Equina":                       "Add your description here.",
+    "Brachial Plexus":                    "Add your description here.",
+    "Lumbosacral Plexus":                 "Add your description here.",
+    "Radial Nerve":                       "Add your description here.",
+    "Median Nerve":                       "Add your description here.",
+    "Ulnar Nerve":                        "Add your description here.",
+    "Sciatic Nerve":                      "Add your description here.",
+    "Femoral Nerve":                      "Add your description here.",
+    "Tibial Nerve":                       "Add your description here.",
+    "Common Peroneal Nerve":              "Add your description here.",
+
+    // ── URINARY SYSTEM ────────────────────────────────────────────────
+    "Kidney":                             "Add your description here.",
+    "Ureter":                             "Add your description here.",
+    "Urinary Bladder":                    "Add your description here.",
+    "Urethra":                            "Add your description here.",
+    "Adrenal Gland":                      "Add your description here.",
+
+    // ── ENDOCRINE SYSTEM ──────────────────────────────────────────────
+    "Pituitary Gland":                    "Add your description here.",
+    "Pineal Gland":                       "Add your description here.",
+    "Hypothalamus":                       "Add your description here.",
+    "Thyroid Gland":                      "Add your description here.",
+    "Parathyroid Gland":                  "Add your description here.",
+    "Thymus":                             "Add your description here.",
+    "Pancreas (Islets of Langerhans)":    "Add your description here.",
+    "Gonad":                              "Add your description here.",
+
+    // ── LYMPHATIC SYSTEM ──────────────────────────────────────────────
+    "Spleen":                             "Add your description here.",
+    "Thoracic Duct":                      "Add your description here.",
+    "Cisterna Chyli":                     "Add your description here.",
+    "Palatine Tonsil":                    "Add your description here.",
+    "Cervical Lymph Nodes":               "Add your description here.",
+    "Axillary Lymph Nodes":               "Add your description here.",
+    "Mesenteric Lymph Nodes":             "Add your description here.",
+    "Inguinal Lymph Nodes":               "Add your description here.",
+
+    // ── REPRODUCTIVE SYSTEM ───────────────────────────────────────────
+    "Ovary":                              "Add your description here.",
+    "Fallopian Tube":                     "Add your description here.",
+    "Uterus":                             "Add your description here.",
+    "Cervix":                             "Add your description here.",
+    "Broad Ligament":                     "Add your description here.",
+    "Vagina":                             "Add your description here.",
+
+    // ── MUSCULAR SYSTEM ───────────────────────────────────────────────
+    "Sternocleidomastoid":                "Add your description here.",
+    "Pectoralis Major":                   "Add your description here.",
+    "Deltoid":                            "Add your description here.",
+    "Biceps Brachii":                     "Add your description here.",
+    "Rectus Abdominis":                   "Add your description here.",
+    "External Oblique":                   "Add your description here.",
+    "Quadriceps Femoris":                 "Add your description here.",
+    "Gastrocnemius":                      "Add your description here.",
+
+    // ── INTEGUMENTARY SYSTEM ──────────────────────────────────────────
+    "Skin — Body Surface":                "Add your description here.",
+    "Nails":                              "Add your description here.",
+
+  };
+  const systemDescriptions = {
+    // ── BODY SYSTEM DESCRIPTIONS ──────────────────────────────────────
+    "digestive":      "Add your Digestive System description here.",
+    "respiratory":    "Add your Respiratory System description here.",
+    "circulatory":    "Add your Circulatory System description here.",
+    "nervous":        "Add your Nervous System description here.",
+    "urinary":        "Add your Urinary System description here.",
+    "endocrine":      "Add your Endocrine System description here.",
+    "lymphatic":      "Add your Lymphatic/Immune System description here.",
+    "reproductive":   "Add your Reproductive System description here.",
+    "muscular":       "Add your Muscular System description here.",
+    "integumentary":  "Add your Integumentary System description here.",
+    "skeletal":       "Add your Skeletal System description here.",
+  };
+  const typeFullLabels = { bone: 'Skeletal Bone', marking: 'Bone Marking', organ: 'Body System Organ' };
+  const typeBarColors  = { bone: '#c8a060', marking: '#e05030', organ: '#8bbcd4' };
+
+  // Populate sidebar dropdown descriptions from the systemDescriptions object
+  Object.keys(systemDescriptions).forEach(sid => {
+    const el = document.getElementById(`sidebar-desc-${sid}`);
+    if (el) el.textContent = systemDescriptions[sid];
+  });
+  const card   = document.getElementById('info-card');
+  const icName = document.getElementById('ic-name');
+  const icType = document.getElementById('ic-type');
+  const icDesc = document.getElementById('ic-desc');
+  const icBar  = document.getElementById('ic-bar');
+  let pinnedEl = null, cardOpen = false, pinnedOffsetX = null, pinnedOffsetY = null;
+  function positionCard(x, y) {
+    card.style.display = 'block';
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let l = window.innerWidth - cw - 20;
+    let t = Math.max(10, Math.min(y - ch / 2, window.innerHeight - ch - 10));
+    card.style.left = l + 'px'; card.style.top = t + 'px';
+  }
+  function openCard(e, el) {
+    const name = el.dataset.name, type = el.dataset.type;
+    if (!name) return;
+    if (pinnedEl && pinnedEl !== el) {
+      highlightStrokes(pinnedEl, false);
+      pinnedEl.classList.remove('pinned');
+    }
+    pinnedEl = el; el.classList.add('pinned');
+    highlightStrokes(el, true);
+    if (name === 'Diaphragm') {
+      const svg = document.getElementById('skeleton-svg');
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+      pinnedOffsetX = svgP.x < 400 ? -70 : 70; pinnedOffsetY = 0;
+    } else if (el.closest('#sys-nervous') || name.includes('Ribs') ||
+               name === 'Fallopian Tube' || name === 'Ureter' ||
+               name === 'Aortic Arch' || name === 'Common Iliac Veins' ||
+               name === 'Common Iliac Arteries' || name === 'Pulmonary Trunk' ||
+               name === 'Ascending Aorta' || name === 'Duodenum' ||
+               name === 'Ascending Colon' || name === 'Sigmoid Colon' ||
+               name === 'Liver Lobe' || name === 'Pancreas') {
+      const rect = el.getBoundingClientRect();
+      pinnedOffsetX = e.clientX - (rect.left + rect.width / 2);
+      pinnedOffsetY = e.clientY - (rect.top + rect.height / 2);
+    } else if (name === 'Transverse Colon') {
+      pinnedOffsetX = 0; pinnedOffsetY = -5;
+    } else if (name === 'Descending Colon') {
+      pinnedOffsetX = -9; pinnedOffsetY = 0;
+    } else if (name === 'Clavicle') {
+      pinnedOffsetX = 0; pinnedOffsetY = -5;
+    } else {
+      pinnedOffsetX = 0; pinnedOffsetY = 0;
+    }
+    document.getElementById('ic-type').textContent = typeFullLabels[type] || 'Structure';
+    document.getElementById('ic-name').textContent = name;
+    document.getElementById('ic-desc').textContent = descriptions[name] || 'Add your description here.';
+    document.getElementById('ic-bar').style.background = typeBarColors[type] || '#c8a060';
+    card.style.display = 'block'; card.classList.add('visible');
+    positionCard(e.clientX, e.clientY);
+    cardOpen = true;
+    setTimeout(updateConnector, 10);
+  }
+  function closeCard() {
+    card.classList.remove('visible');
+    setTimeout(() => { if (!card.classList.contains('visible')) card.style.display = 'none'; }, 10);
+    if (pinnedEl) {
+      highlightStrokes(pinnedEl, false);
+      pinnedEl.classList.remove('pinned');
+      pinnedEl = null;
+    }
+    cardOpen = false; removeConnector();
+  }
+  function createConnector(startX, startY, endX, endY) {
+    const svg = document.getElementById('connector-svg');
+    svg.innerHTML = `<defs><marker id="dot" markerWidth="6" markerHeight="6" refX="3" refY="3"><circle cx="3" cy="3" r="3" fill="#A47852"/></marker></defs>
+      <path d="M ${startX},${startY} Q ${(startX+endX)/2},${startY} ${(startX+endX)/2+50},${(startY+endY)/2} T ${endX},${endY}"
+            stroke="#A47852" stroke-width="2" stroke-dasharray="5,5" fill="none" marker-start="url(#dot)"/>`;
+    svg.style.display = 'block';
+  }
+  function updateConnector() {
+    if (!pinnedEl || !cardOpen) return;
+    const rect = pinnedEl.getBoundingClientRect();
+    const startX = rect.left + rect.width/2 + (pinnedOffsetX||0);
+    const startY = rect.top + rect.height/2 + (pinnedOffsetY||0);
+    const cardRect = card.getBoundingClientRect();
+    createConnector(startX, startY, cardRect.left, cardRect.top + cardRect.height/2);
+  }
+  function removeConnector() {
+    const svg = document.getElementById('connector-svg');
+    svg.style.display = 'none'; svg.innerHTML = '';
+  }
+  function showSystemCard(sid, name, color, btnEl) {
+    if (pinnedEl) { pinnedEl.classList.remove('pinned'); pinnedEl = null; }
+    icType.textContent = 'Body System'; icName.textContent = name;
+    icDesc.textContent = systemDescriptions[sid] || 'Add your description here.';
+    icBar.style.background = color; card.classList.add('visible');
+    const rect = btnEl.getBoundingClientRect();
+    const cw = 260, ch = 140;
+    let l = rect.right + 12;
+    let t = Math.max(10, Math.min(rect.top, window.innerHeight - ch - 10));
+    if (l + cw > window.innerWidth - 8) l = rect.left - cw - 12;
+    card.style.left = l + 'px'; card.style.top = t + 'px';
+    card.style.display = 'block'; cardOpen = true;
+    setTimeout(updateConnector, 10);
+  }
+  document.addEventListener('click', (e) => {
+    if (cardOpen && !card.contains(e.target) && !e.target.closest('[data-name]')) closeCard();
+  });
+  window.addEventListener('scroll', updateConnector);
+  window.addEventListener('resize', updateConnector);
+
+  // Lock sidebar width in fullscreen
+  const panel = document.querySelector('.panel');
+  function lockPanelWidth() {
+    panel.style.width = '210px';
+    panel.style.minWidth = '210px';
+    panel.style.maxWidth = '210px';
+    panel.style.flexShrink = '0';
+    panel.style.flexGrow = '0';
+  }
+  lockPanelWidth();
+  document.addEventListener('fullscreenchange', lockPanelWidth);
+  document.addEventListener('webkitfullscreenchange', lockPanelWidth);
+  document.addEventListener('mozfullscreenchange', lockPanelWidth);
+</script>
+<!-- ── QUIZ SETUP MODAL ── -->
+<div id="quiz-setup" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+  <div style="background:#1c1810;border:1px solid #3a3020;border-radius:10px;padding:28px 32px;width:360px;max-width:92vw;font-family:'Source Sans 3',sans-serif;color:#f0ead8;">
+    <div style="font-family:'Libre Baskerville',serif;font-size:16px;font-weight:700;margin-bottom:4px;color:#f5ead0;">Quiz Mode</div>
+    <div style="font-size:11px;color:#908070;margin-bottom:14px;font-style:italic;">Select which systems to be quizzed on</div>
+
+    <div id="quiz-system-checks" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:300px;overflow-y:auto;"></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button onclick="quizSelectAll()" class="qbtn-dark" style="flex:1;padding:5px 0;background:#2a2418;border:1px solid #3a3020;border-radius:4px;color:#908070;cursor:pointer;font-family:inherit;font-size:11px;">Select All</button>
+      <button onclick="quizClearAll()" class="qbtn-dark" style="flex:1;padding:5px 0;background:#2a2418;border:1px solid #3a3020;border-radius:4px;color:#908070;cursor:pointer;font-family:inherit;font-size:11px;">Clear All</button>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeQuizSetup()" class="qbtn-dark" style="padding:7px 16px;background:#2a2418;border:1px solid #3a3020;border-radius:5px;color:#908070;cursor:pointer;font-family:inherit;font-size:12px;">Cancel</button>
+      <button onclick="startQuiz()" class="qbtn-gold" style="padding:7px 16px;background:#c07820;border:none;border-radius:5px;color:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;">Start Quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── QUIZ HUD ── -->
+<div id="quiz-hud" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9990;background:#1c1810;border-bottom:2px solid #c07820;padding:10px 20px;display:none;align-items:center;gap:16px;font-family:'Source Sans 3',sans-serif;">
+  <div style="font-size:11px;color:#908070;letter-spacing:0.1em;text-transform:uppercase;">Find:</div>
+  <div id="quiz-target-name" style="font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:#f0c060;flex:1;"></div>
+  <div id="quiz-progress" style="font-size:12px;color:#908070;"></div>
+  <div id="quiz-score" style="font-size:12px;color:#c8b898;"></div>
+  <div id="quiz-timer" style="font-size:12px;color:#c8a060;font-variant-numeric:tabular-nums;min-width:48px;text-align:right;">0:00</div>
+  <button onclick="skipQuestion()" class="qbtn-dark" style="padding:5px 12px;background:#2a2418;border:1px solid #3a3020;border-radius:4px;color:#908070;cursor:pointer;font-family:inherit;font-size:11px;">Skip</button>
+  <button onclick="endQuiz()" class="qbtn-end" style="padding:5px 12px;background:#2a2418;border:1px solid #c07820;border-radius:4px;color:#c07820;cursor:pointer;font-family:inherit;font-size:11px;">End Quiz</button>
+</div>
+
+<!-- ── QUIZ FEEDBACK ── -->
+<div id="quiz-feedback" style="display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9995;padding:10px 24px;border-radius:6px;font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:600;pointer-events:none;"></div>
+
+<!-- ── QUIZ RESULTS ── -->
+<div id="quiz-results" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+  <div style="background:#1c1810;border:1px solid #3a3020;border-radius:10px;padding:32px 36px;width:400px;max-width:92vw;font-family:'Source Sans 3',sans-serif;color:#f0ead8;text-align:center;">
+    <div style="font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:#f5ead0;margin-bottom:6px;">Quiz Complete!</div>
+    <div id="quiz-result-score" style="font-size:36px;font-weight:700;color:#f0c060;margin:16px 0;"></div>
+    <div id="quiz-result-detail" style="font-size:13px;color:#908070;margin-bottom:16px;"></div>
+    <div id="quiz-result-breakdown" style="text-align:left;margin-bottom:20px;display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="closeResults()" class="qbtn-dark" style="padding:8px 20px;background:#2a2418;border:1px solid #3a3020;border-radius:5px;color:#908070;cursor:pointer;font-family:inherit;font-size:12px;">Close</button>
+      <button onclick="openQuizSetup()" class="qbtn-gold" style="padding:8px 20px;background:#c07820;border:none;border-radius:5px;color:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  QUIZ MODE
+// ════════════════════════════════════════════════════════════
+
+const QUIZ_SYSTEMS = [
+  { id: 'digestive',     label: 'Digestive',     color: '#D4694A' },
+  { id: 'respiratory',   label: 'Respiratory',   color: '#5A9ED4' },
+  { id: 'circulatory',   label: 'Circulatory',   color: '#C43030' },
+  { id: 'nervous',       label: 'Nervous',       color: '#D4A030' },
+  { id: 'urinary',       label: 'Urinary',       color: '#30A0B0' },
+  { id: 'endocrine',     label: 'Endocrine',     color: '#9030C4' },
+  { id: 'lymphatic',     label: 'Lymphatic',     color: '#309060' },
+  { id: 'reproductive',  label: 'Reproductive',  color: '#C43080' },
+  { id: 'muscular',      label: 'Muscular',      color: '#903050' },
+  { id: 'integumentary', label: 'Integumentary', color: '#D4A882' },
+];
+
+let quizQueue = [], quizIndex = 0, quizCorrect = 0, quizActive = false;
+let quizCurrentEl = null;
+let quizTimerInterval = null, quizElapsedSeconds = 0;
+let quizSysScores = {}; // { sysId: { correct, total } }
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function getUniqueNames(selector) {
+  const seen = new Set();
+  document.querySelectorAll(selector).forEach(el => {
+    if (el.dataset.name) seen.add(el.dataset.name);
+  });
+  return [...seen].sort();
+}
+
+function makeArrow(id) {
+  return `<span data-arrow="${id}" onclick="toggleQuizSub('${id}')" style="cursor:pointer;font-size:9px;color:#c8b898;padding:5px 8px;user-select:none;flex-shrink:0;border-radius:3px;transition:background 0.15s,color 0.15s;" onmouseenter="event.stopPropagation();this.style.background='rgba(255,255,255,0.1)';this.style.color='#f0c060'" onmouseleave="event.stopPropagation();this.style.background='';this.style.color='#c8b898'">▼</span>`;
+}
+
+function toggleQuizSub(id) {
+  const sub = document.getElementById(`qsub-${id}`);
+  const arrow = document.querySelector(`[data-arrow="${id}"]`);
+  if (!sub) return;
+  const open = sub.style.display !== 'none';
+  sub.style.display = open ? 'none' : 'flex';
+  if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+// Build a list of name checkboxes inside a sub-panel
+function buildNameList(names, prefix, color, parentId, defaultChecked = false) {
+  const div = document.createElement('div');
+  div.id = `qsub-${prefix}`;
+  div.style.cssText = 'display:none;flex-direction:column;gap:3px;padding:3px 8px 5px 28px;';
+  names.forEach(name => {
+    const safe = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:7px;cursor:pointer;padding:2px 4px;border-radius:3px;';
+    label.onmouseenter = () => label.style.background = 'rgba(255,255,255,0.05)';
+    label.onmouseleave = () => label.style.background = '';
+    label.innerHTML = `<input type="checkbox" id="qname-${prefix}-${safe}" data-qparent="${parentId}" ${defaultChecked ? 'checked data-skeletal="1"' : ''}
+      style="accent-color:${color};width:11px;height:11px;cursor:pointer;">
+      <span style="font-size:11px;color:#9a8868;">${name}</span>`;
+    label.querySelector('input').addEventListener('change', () => syncParentCheck(parentId));
+    div.appendChild(label);
+  });
+  return div;
+}
+
+// Build a sub-row (e.g. "Bones", "Bone Markings", or a system sub-category)
+function buildSubRow(label, id, color, namesPrefix, names, parentId, defaultChecked = false) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;border-radius:5px;';
+  row.innerHTML = `
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;padding:2px 8px;border-radius:5px;transition:background 0.1s;"
+      onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
+      <input type="checkbox" id="${id}" data-qparent="${parentId}" ${defaultChecked ? 'checked data-skeletal="1"' : ''}
+        style="accent-color:${color};width:12px;height:12px;cursor:pointer;">
+      <span style="font-size:11.5px;color:#a09070;">${label}</span>
+    </label>
+    ${names.length ? makeArrow(namesPrefix) : ''}`;
+
+  const cb = row.querySelector('input');
+  cb.addEventListener('change', () => {
+    const sub = document.getElementById(`qsub-${namesPrefix}`);
+    if (sub) sub.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = cb.checked);
+    syncParentCheck(parentId);
+  });
+
+  wrap.appendChild(row);
+  if (names.length) wrap.appendChild(buildNameList(names, namesPrefix, color, id, defaultChecked));
+  return wrap;
+}
+
+// Auto-uncheck parent if all children unchecked; auto-check if any child checked
+function syncParentCheck(parentId) {
+  const parent = document.getElementById(parentId);
+  if (!parent) return;
+  const children = document.querySelectorAll(`[data-qparent="${parentId}"]`);
+  const anyChecked = [...children].some(c => c.checked);
+  parent.checked = anyChecked;
+  // Propagate up one more level if parent also has a data-qparent
+  if (parent.dataset.qparent) syncParentCheck(parent.dataset.qparent);
+}
+
+// ── build setup UI ────────────────────────────────────────────────────────────
+
+function openQuizSetup() {
+  closeResults();
+  const container = document.getElementById('quiz-system-checks');
+  container.innerHTML = '';
+
+  // ── SKELETAL ──
+  const boneNames    = getUniqueNames('#skeleton-svg .bone[data-name]');
+  const markingNames = getUniqueNames('#skeleton-svg .marking[data-name]');
+
+  const skelWrap = document.createElement('div');
+  skelWrap.style.cssText = 'display:flex;flex-direction:column;';
+
+  const skelRow = document.createElement('div');
+  skelRow.style.cssText = 'display:flex;align-items:center;border-radius:5px;';
+  skelRow.innerHTML = `
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;padding:5px 8px;border-radius:5px;transition:background 0.1s;"
+      onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
+      <input type="checkbox" id="qsys-skeletal" checked data-skeletal="1" style="accent-color:#b8a88a;width:14px;height:14px;cursor:pointer;">
+      <span style="width:10px;height:10px;border-radius:50%;background:#b8a88a;flex-shrink:0;display:inline-block;"></span>
+      <span style="font-size:12.5px;color:#c8b898;">Skeletal</span>
+    </label>
+    ${makeArrow('skeletal')}`;
+
+  const skelCb = skelRow.querySelector('#qsys-skeletal');
+  skelCb.addEventListener('change', () => {
+    document.querySelectorAll('[data-qparent="qsys-skeletal"]').forEach(c => c.checked = skelCb.checked);
+    document.querySelectorAll('[data-qparent="qsys-skeletal-bones"],[data-qparent="qsys-skeletal-markings"]').forEach(c => c.checked = skelCb.checked);
+  });
+
+  const skelSub = document.createElement('div');
+  skelSub.id = 'qsub-skeletal';
+  skelSub.style.cssText = 'display:none;flex-direction:column;gap:4px;padding:3px 8px 5px 20px;';
+  skelSub.appendChild(buildSubRow('Bones',         'qsys-skeletal-bones',    '#b8a88a', 'skel-bones',    boneNames,    'qsys-skeletal', true));
+  skelSub.appendChild(buildSubRow('Bone Markings', 'qsys-skeletal-markings', '#c8b89a', 'skel-markings', markingNames, 'qsys-skeletal', true));
+
+  skelWrap.appendChild(skelRow);
+  skelWrap.appendChild(skelSub);
+  container.appendChild(skelWrap);
+
+  // ── OTHER SYSTEMS ──
+  QUIZ_SYSTEMS.forEach(sys => {
+    const layer = document.getElementById(`sys-${sys.id}`);
+    const names = layer ? getUniqueNames(`#sys-${sys.id} [data-name]`) : [];
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;border-radius:5px;';
+    row.innerHTML = `
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;padding:5px 8px;border-radius:5px;transition:background 0.1s;"
+        onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
+        <input type="checkbox" id="qsys-${sys.id}" style="accent-color:${sys.color};width:14px;height:14px;cursor:pointer;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${sys.color};flex-shrink:0;display:inline-block;"></span>
+        <span style="font-size:12.5px;color:#c8b898;">${sys.label}</span>
+      </label>
+      ${names.length ? makeArrow(sys.id) : ''}`;
+
+    const cb = row.querySelector(`#qsys-${sys.id}`);
+    cb.addEventListener('change', () => {
+      const sub = document.getElementById(`qsub-${sys.id}`);
+      if (sub) sub.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = cb.checked);
+    });
+
+    const nameSub = buildNameList(names, sys.id, sys.color, `qsys-${sys.id}`);
+    nameSub.id = `qsub-${sys.id}`;
+    nameSub.style.paddingLeft = '28px';
+
+    wrap.appendChild(row);
+    if (names.length) wrap.appendChild(nameSub);
+    container.appendChild(wrap);
+  });
+
+  document.getElementById('quiz-setup').style.display = 'flex';
+}
+
+function quizSelectAll() {
+  document.querySelectorAll('#quiz-system-checks input[type=checkbox]').forEach(c => c.checked = true);
+  collapseAllQuizSubs();
+}
+
+function quizClearAll() {
+  document.querySelectorAll('#quiz-system-checks input[type=checkbox]').forEach(c => {
+    if (!c.dataset.skeletal) c.checked = false;
+  });
+  collapseAllQuizSubs();
+}
+
+function collapseAllQuizSubs() {
+  document.querySelectorAll('#quiz-system-checks [id^="qsub-"]').forEach(sub => {
+    sub.style.display = 'none';
+  });
+  document.querySelectorAll('#quiz-system-checks [data-arrow]').forEach(arrow => {
+    arrow.textContent = '▼';
+  });
+}
+
+function closeQuizSetup() {
+  document.getElementById('quiz-setup').style.display = 'none';
+}
+
+function collectQuizItems() {
+  const items = [];
+  const seen = new Set();
+
+  // Skeletal — bones
+  if (document.getElementById('qsys-skeletal-bones')?.checked) {
+    document.querySelectorAll('#skeleton-svg .bone[data-name]').forEach(el => {
+      const name = el.dataset.name;
+      const safe = name.replace(/[^a-zA-Z0-9]/g, '_');
+      const cb = document.getElementById(`qname-skel-bones-${safe}`);
+      if (name && !seen.has(name) && cb && cb.checked) {
+        seen.add(name); items.push({ name, el, sys: 'skeletal' });
+      }
+    });
+  }
+  // Skeletal — markings
+  if (document.getElementById('qsys-skeletal-markings')?.checked) {
+    document.querySelectorAll('#skeleton-svg .marking[data-name]').forEach(el => {
+      const name = el.dataset.name;
+      const safe = name.replace(/[^a-zA-Z0-9]/g, '_');
+      const cb = document.getElementById(`qname-skel-markings-${safe}`);
+      if (name && !seen.has(name) && cb && cb.checked) {
+        seen.add(name); items.push({ name, el, sys: 'skeletal' });
+      }
+    });
+  }
+
+  // Other systems
+  QUIZ_SYSTEMS.forEach(sys => {
+    if (!document.getElementById(`qsys-${sys.id}`)?.checked) return;
+    const layer = document.getElementById(`sys-${sys.id}`);
+    if (!layer) return;
+    layer.querySelectorAll('[data-name]').forEach(el => {
+      const name = el.dataset.name;
+      const safe = name.replace(/[^a-zA-Z0-9]/g, '_');
+      const cb = document.getElementById(`qname-${sys.id}-${safe}`);
+      if (name && !seen.has(name) && cb && cb.checked) {
+        seen.add(name); items.push({ name, el, sys: sys.id });
+      }
+    });
+  });
+
+  // Shuffle
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+function startQuiz() {
+  const includeSkeletal = document.getElementById('qsys-skeletal')?.checked;
+  const anyOther = QUIZ_SYSTEMS.some(s => document.getElementById(`qsys-${s.id}`)?.checked);
+  if (!includeSkeletal && !anyOther) { alert('Please select at least one system.'); return; }
+
+  closeQuizSetup();
+  clearAll();
+
+  quizQueue = collectQuizItems();
+  if (quizQueue.length === 0) { alert('No items found. Make sure at least one name is checked.'); return; }
+
+  quizIndex = 0; quizCorrect = 0; quizActive = true; quizCurrentEl = null;
+  quizSysScores = {};
+  quizQueue.forEach(item => {
+    if (!quizSysScores[item.sys]) quizSysScores[item.sys] = { correct: 0, total: 0 };
+    quizSysScores[item.sys].total++;
+  });
+  quizElapsedSeconds = 0;
+  clearInterval(quizTimerInterval);
+  document.getElementById('quiz-timer').textContent = '0.0';
+  quizTimerInterval = setInterval(() => {
+    quizElapsedSeconds += 0.1;
+    const total = Math.round(quizElapsedSeconds * 10) / 10;
+    const m = Math.floor(total / 60);
+    const s = (total % 60).toFixed(1);
+    document.getElementById('quiz-timer').textContent = m > 0 ? `${m}:${parseFloat(s) < 10 ? s : s}` : `${s}`;
+  }, 100);
+  document.getElementById('tooltip').style.display = 'none';
+  closeCard();
+  document.getElementById('skeleton-svg').addEventListener('click', onQuizClick, true);
+  document.getElementById('quiz-hud').style.display = 'flex';
+  showQuestion();
+}
+
+function showQuestion() {
+  if (quizIndex >= quizQueue.length) { finishQuiz(); return; }
+  const item = quizQueue[quizIndex];
+  document.getElementById('quiz-target-name').textContent = item.name;
+  document.getElementById('quiz-progress').textContent = `${quizIndex + 1} / ${quizQueue.length}`;
+  document.getElementById('quiz-score').textContent = `✓ ${quizCorrect}  ✗ ${quizIndex - quizCorrect}`;
+  quizCurrentEl = null;
+}
+
+function onQuizClick(e) {
+  if (!quizActive) return;
+  e.stopPropagation();
+
+  const named = e.target.closest('[data-name]');
+  if (!named) return;
+
+  const target = quizQueue[quizIndex];
+  const clicked = named.dataset.name;
+
+  if (clicked === target.name) {
+    quizCorrect++;
+    if (quizSysScores[target.sys]) quizSysScores[target.sys].correct++;
+    flashFeedback('✓ Correct!', '#2a7a2a', '#6ddd6d');
+    flashElement(named, true);
+    quizIndex++;
+    setTimeout(showQuestion, 900);
+  } else {
+    flashFeedback(`✗ That's ${clicked}`, '#7a1a1a', '#ff7070');
+    flashElement(named, false);
+  }
+}
+
+function flashFeedback(msg, bg, color) {
+  const el = document.getElementById('quiz-feedback');
+  el.textContent = msg;
+  el.style.cssText = `display:block;position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9995;padding:10px 24px;border-radius:6px;font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:600;pointer-events:none;background:${bg};color:${color};box-shadow:0 4px 16px rgba(0,0,0,0.4);`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 1400);
+}
+
+function flashElement(el, correct) {
+  const origFill = el.style.fill;
+  const origStroke = el.style.stroke;
+  el.style.fill = correct ? '#6ddd6d' : '#ff7070';
+  el.style.stroke = correct ? '#2a7a2a' : '#7a1a1a';
+  setTimeout(() => {
+    el.style.fill = origFill;
+    el.style.stroke = origStroke;
+  }, 800);
+}
+
+function skipQuestion() {
+  if (!quizActive) return;
+  flashFeedback(`Skipped — was: ${quizQueue[quizIndex].name}`, '#3a2a10', '#c8a060');
+  quizIndex++;
+  setTimeout(showQuestion, 1000);
+}
+
+function finishQuiz() {
+  quizActive = false;
+  clearInterval(quizTimerInterval);
+  document.getElementById('skeleton-svg').removeEventListener('click', onQuizClick, true);
+  document.getElementById('quiz-hud').style.display = 'none';
+  document.getElementById('quiz-feedback').style.display = 'none';
+  document.getElementById('tooltip').style.display = '';
+  clearAll();
+
+  const pct = Math.round((quizCorrect / quizQueue.length) * 100);
+  const total = Math.round(quizElapsedSeconds * 10) / 10;
+  const m = Math.floor(total / 60);
+  const s = (total % 60).toFixed(1);
+  const timeStr = m > 0 ? `${m}:${s}` : `${s}s`;
+  document.getElementById('quiz-result-score').textContent = `${quizCorrect} / ${quizQueue.length}`;
+  document.getElementById('quiz-result-detail').textContent = `${pct}% correct · ${timeStr}`;
+
+  // Per-system breakdown
+  const allSystems = [
+    { id: 'skeletal', label: 'Skeletal', color: '#b8a88a' },
+    ...QUIZ_SYSTEMS
+  ];
+  const breakdown = document.getElementById('quiz-result-breakdown');
+  breakdown.innerHTML = '';
+  allSystems.forEach(sys => {
+    const s = quizSysScores[sys.id];
+    if (!s) return;
+    const pctSys = Math.round((s.correct / s.total) * 100);
+    const barWidth = pctSys;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+    row.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${sys.color};flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:11.5px;color:#c8b898;">${sys.label}</span>
+        </div>
+        <span style="font-size:11.5px;color:#908070;">${s.correct}/${s.total}</span>
+      </div>
+      <div style="height:4px;background:#2a2418;border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${barWidth}%;background:${sys.color};border-radius:2px;transition:width 0.4s;"></div>
+      </div>`;
+    breakdown.appendChild(row);
+  });
+  document.getElementById('quiz-results').style.display = 'flex';
+}
+
+function endQuiz() {
+  finishQuiz();
+}
+
+function closeResults() {
+  document.getElementById('quiz-results').style.display = 'none';
+}
+</script>
+</html>
+</body>
+</html>
