@@ -915,62 +915,192 @@
     if (named) hideTip(named);
   }, true);
   const descriptions = {
-    "Skull":"Add your description here.","Frontal":"Add your description here.","Mandible":"Add your description here.",
-    "Cervical Vertebrae (C1-C7)":"Add your description here.","Thoracic Vertebrae (T1-T12)":"Add your description here.",
-    "Lumbar Vertebrae (L1-L5)":"Add your description here.","Sacrum":"Add your description here.","Coccyx":"Add your description here.",
-    "Sternum":"Add your description here.","Xiphoid Process":"Add your description here.","True Ribs (1-7)":"Add your description here.",
-    "False Ribs (8-10)":"Add your description here.","Floating Ribs (11-12)":"Add your description here.",
-    "Clavicle":"Add your description here.","Scapula":"Add your description here.","Humerus":"Add your description here.",
-    "Head of Humerus":"Add your description here.","Deltoid Tuberosity":"Add your description here.",
-    "Trochlea":"Add your description here.","Olecranon Fossa":"Add your description here.","Radius":"Add your description here.",
-    "Radial Tuberosity":"Add your description here.","Ulna":"Add your description here.","Olecranon Process":"Add your description here.",
-    "Carpals":"Add your description here.","Metacarpals":"Add your description here.","Phalanges - Hand":"Add your description here.",
-    "Pelvis":"Add your description here.","Femur":"Add your description here.","Head of Femur":"Add your description here.",
-    "Greater Trochanter":"Add your description here.","Neck of Femur":"Add your description here.",
-    "Lateral Condyle":"Add your description here.","Patella":"Add your description here.","Tibia":"Add your description here.",
-    "Medial Malleolus":"Add your description here.","Fibula":"Add your description here.","Lateral Malleolus":"Add your description here.",
-    "Tarsals":"Add your description here.","Metatarsals":"Add your description here.","Phalanges - Foot":"Add your description here.",
-    "Esophagus":"Add your description here.","Gastroesophageal Junction":"Add your description here.","Stomach":"Add your description here.",
-    "Pylorus":"Add your description here.","Liver Lobe":"Add your description here.","Gallbladder":"Add your description here.",
-    "Pancreas":"Add your description here.","Duodenum":"Add your description here.","Small Intestine":"Add your description here.",
-    "Ascending Colon":"Add your description here.","Transverse Colon":"Add your description here.",
-    "Descending Colon":"Add your description here.","Sigmoid Colon":"Add your description here.","Cecum":"Add your description here.",
-    "Appendix":"Add your description here.","Rectum":"Add your description here.","Trachea":"Add your description here.",
-    "Bronchi":"Add your description here.","Bronchus":"Add your description here.","Lung":"Add your description here.",
-    "Diaphragm":"Add your description here.","Heart":"Add your description here.","Ascending Aorta":"Add your description here.",
-    "Aortic Arch":"Add your description here.","Descending Thoracic Aorta":"Add your description here.",
-    "Abdominal Aorta":"Add your description here.","Common Iliac Arteries":"Add your description here.",
-    "Superior Vena Cava":"Add your description here.","Inferior Vena Cava":"Add your description here.",
-    "Common Iliac Veins":"Add your description here.","Pulmonary Trunk":"Add your description here.",
-    "Brain":"Add your description here.","Brain Stem":"Add your description here.","Cerebellum":"Add your description here.",
-    "Spinal Cord":"Add your description here.","Cauda Equina":"Add your description here.","Brachial Plexus":"Add your description here.",
-    "Lumbosacral Plexus":"Add your description here.","Radial Nerve":"Add your description here.",
-    "Median Nerve":"Add your description here.","Ulnar Nerve":"Add your description here.","Sciatic Nerve":"Add your description here.",
-    "Femoral Nerve":"Add your description here.","Tibial Nerve":"Add your description here.","Common Peroneal Nerve":"Add your description here.",
-    "Kidney":"Add your description here.","Ureter":"Add your description here.","Urinary Bladder":"Add your description here.",
-    "Urethra":"Add your description here.","Adrenal Gland":"Add your description here.","Pituitary Gland":"Add your description here.",
-    "Pineal Gland":"Add your description here.","Hypothalamus":"Add your description here.","Thyroid Gland":"Add your description here.",
-    "Parathyroid Gland":"Add your description here.","Thymus":"Add your description here.",
-    "Pancreas (Islets of Langerhans)":"Add your description here.","Gonad":"Add your description here.",
-    "Spleen":"Add your description here.","Thoracic Duct":"Add your description here.","Cisterna Chyli":"Add your description here.",
-    "Palatine Tonsil":"Add your description here.","Cervical Lymph Nodes":"Add your description here.",
-    "Axillary Lymph Nodes":"Add your description here.","Mesenteric Lymph Nodes":"Add your description here.",
-    "Inguinal Lymph Nodes":"Add your description here.","Ovary":"Add your description here.","Fallopian Tube":"Add your description here.",
-    "Uterus":"Add your description here.","Cervix":"Add your description here.","Broad Ligament":"Add your description here.",
-    "Vagina":"Add your description here.","Sternocleidomastoid":"Add your description here.","Pectoralis Major":"Add your description here.",
-    "Deltoid":"Add your description here.","Biceps Brachii":"Add your description here.","Rectus Abdominis":"Add your description here.",
-    "External Oblique":"Add your description here.","Quadriceps Femoris":"Add your description here.",
-    "Gastrocnemius":"Add your description here.","Skin — Body Surface":"Add your description here.","Nails":"Add your description here.",
-    "Condyles":"Add your description here."
+
+
+       // ── SKULL & FACE ──────────────────────────────────────────────────
+    "Skull":                              "Add your description here.",
+    "Frontal":                            "Add your description here.",
+    "Mandible":                           "Add your description here.",
+ 
+    // ── VERTEBRAL COLUMN ──────────────────────────────────────────────
+    "Cervical Vertebrae (C1-C7)":         "Add your description here.",
+    "Thoracic Vertebrae (T1-T12)":        "Add your description here.",
+    "Lumbar Vertebrae (L1-L5)":           "Add your description here.",
+    "Sacrum":                             "Add your description here.",
+    "Coccyx":                             "Add your description here.",
+ 
+    // ── THORAX ────────────────────────────────────────────────────────
+    "Sternum":                            "Add your description here.",
+    "Xiphoid Process":                    "Add your description here.",
+    "True Ribs (1-7)":                    "Add your description here.",
+    "False Ribs (8-10)":                  "Add your description here.",
+    "Floating Ribs (11-12)":              "Add your description here.",
+ 
+    // ── PECTORAL GIRDLE ───────────────────────────────────────────────
+    "Clavicle":                           "Add your description here.",
+    "Scapula":                            "Add your description here.",
+ 
+    // ── UPPER ARM ─────────────────────────────────────────────────────
+    "Humerus":                            "Add your description here.",
+    "Head of Humerus":                    "Add your description here.",
+    "Deltoid Tuberosity":                 "Add your description here.",
+    "Trochlea":                           "Add your description here.",
+    "Olecranon Fossa":                    "Add your description here.",
+ 
+    // ── FOREARM ───────────────────────────────────────────────────────
+    "Radius":                             "Add your description here.",
+    "Radial Tuberosity":                  "Add your description here.",
+    "Ulna":                               "Add your description here.",
+    "Olecranon Process":                  "Add your description here.",
+ 
+    // ── HAND ──────────────────────────────────────────────────────────
+    "Carpals":                            "Add your description here.",
+    "Metacarpals":                        "Add your description here.",
+    "Phalanges - Hand":                   "Add your description here.",
+ 
+    // ── PELVIS ────────────────────────────────────────────────────────
+    "Pelvis":                             "Add your description here.",
+ 
+    // ── UPPER LEG ─────────────────────────────────────────────────────
+    "Femur":                              "Add your description here.",
+    "Head of Femur":                      "Add your description here.",
+    "Greater Trochanter":                 "Add your description here.",
+    "Neck of Femur":                      "Add your description here.",
+    "Lateral Condyle":                    "Add your description here.",
+    "Patella":                            "Add your description here.",
+ 
+    // ── LOWER LEG ─────────────────────────────────────────────────────
+    "Tibia":                              "Add your description here.",
+    "Medial Malleolus":                   "Add your description here.",
+    "Fibula":                             "Add your description here.",
+    "Lateral Malleolus":                  "Add your description here.",
+ 
+    // ── FOOT ──────────────────────────────────────────────────────────
+    "Tarsals":                            "Add your description here.",
+    "Metatarsals":                        "Add your description here.",
+    "Phalanges - Foot":                   "Add your description here.",
+ 
+    // ── DIGESTIVE SYSTEM ──────────────────────────────────────────────
+    "Esophagus":                          "Add your description here.",
+    "Gastroesophageal Junction":          "Add your description here.",
+    "Stomach":                            "Add your description here.",
+    "Pylorus":                            "Add your description here.",
+    "Liver Lobe":                         "Add your description here.",
+    "Gallbladder":                        "Add your description here.",
+    "Pancreas":                           "Add your description here.",
+    "Duodenum":                           "Add your description here.",
+    "Small Intestine":                    "Add your description here.",
+    "Ascending Colon":                    "Add your description here.",
+    "Transverse Colon":                   "Add your description here.",
+    "Descending Colon":                   "Add your description here.",
+    "Sigmoid Colon":                      "Add your description here.",
+    "Cecum":                              "Add your description here.",
+    "Appendix":                           "Add your description here.",
+    "Rectum":                             "Add your description here.",
+ 
+    // ── RESPIRATORY SYSTEM ────────────────────────────────────────────
+    "Trachea":                            "Add your description here.",
+    "Bronchi":                            "Add your description here.",
+    "Bronchus":                           "Add your description here.",
+    "Lung":                               "Add your description here.",
+    "Diaphragm":                          "Add your description here.",
+ 
+    // ── CIRCULATORY SYSTEM ────────────────────────────────────────────
+    "Heart":                              "Add your description here.",
+    "Ascending Aorta":                    "Add your description here.",
+    "Aortic Arch":                        "Add your description here.",
+    "Descending Thoracic Aorta":          "Add your description here.",
+    "Abdominal Aorta":                    "Add your description here.",
+    "Common Iliac Arteries":              "Add your description here.",
+    "Superior Vena Cava":                 "Add your description here.",
+    "Inferior Vena Cava":                 "Add your description here.",
+    "Common Iliac Veins":                 "Add your description here.",
+    "Pulmonary Trunk":                    "Add your description here.",
+ 
+    // ── NERVOUS SYSTEM ────────────────────────────────────────────────
+    "Brain":                              "Add your description here.",
+    "Brain Stem":                         "Add your description here.",
+    "Cerebellum":                         "Add your description here.",
+    "Spinal Cord":                        "Add your description here.",
+    "Cauda Equina":                       "Add your description here.",
+    "Brachial Plexus":                    "Add your description here.",
+    "Lumbosacral Plexus":                 "Add your description here.",
+    "Radial Nerve":                       "Add your description here.",
+    "Median Nerve":                       "Add your description here.",
+    "Ulnar Nerve":                        "Add your description here.",
+    "Sciatic Nerve":                      "Add your description here.",
+    "Femoral Nerve":                      "Add your description here.",
+    "Tibial Nerve":                       "Add your description here.",
+    "Common Peroneal Nerve":              "Add your description here.",
+ 
+    // ── URINARY SYSTEM ────────────────────────────────────────────────
+    "Kidney":                             "Add your description here.",
+    "Ureter":                             "Add your description here.",
+    "Urinary Bladder":                    "Add your description here.",
+    "Urethra":                            "Add your description here.",
+    "Adrenal Gland":                      "Add your description here.",
+ 
+    // ── ENDOCRINE SYSTEM ──────────────────────────────────────────────
+    "Pituitary Gland":                    "Add your description here.",
+    "Pineal Gland":                       "Add your description here.",
+    "Hypothalamus":                       "Add your description here.",
+    "Thyroid Gland":                      "Add your description here.",
+    "Parathyroid Gland":                  "Add your description here.",
+    "Thymus":                             "Add your description here.",
+    "Pancreas (Islets of Langerhans)":    "Add your description here.",
+    "Gonad":                              "Add your description here.",
+ 
+    // ── LYMPHATIC SYSTEM ──────────────────────────────────────────────
+    "Spleen":                             "Add your description here.",
+    "Thoracic Duct":                      "Add your description here.",
+    "Cisterna Chyli":                     "Add your description here.",
+    "Palatine Tonsil":                    "Add your description here.",
+    "Cervical Lymph Nodes":               "Add your description here.",
+    "Axillary Lymph Nodes":               "Add your description here.",
+    "Mesenteric Lymph Nodes":             "Add your description here.",
+    "Inguinal Lymph Nodes":               "Add your description here.",
+ 
+    // ── REPRODUCTIVE SYSTEM ───────────────────────────────────────────
+    "Ovary":                              "Add your description here.",
+    "Fallopian Tube":                     "Add your description here.",
+    "Uterus":                             "Add your description here.",
+    "Cervix":                             "Add your description here.",
+    "Broad Ligament":                     "Add your description here.",
+    "Vagina":                             "Add your description here.",
+ 
+    // ── MUSCULAR SYSTEM ───────────────────────────────────────────────
+    "Sternocleidomastoid":                "Add your description here.",
+    "Pectoralis Major":                   "Add your description here.",
+    "Deltoid":                            "Add your description here.",
+    "Biceps Brachii":                     "Add your description here.",
+    "Rectus Abdominis":                   "Add your description here.",
+    "External Oblique":                   "Add your description here.",
+    "Quadriceps Femoris":                 "Add your description here.",
+    "Gastrocnemius":                      "Add your description here.",
+ 
+    // ── INTEGUMENTARY SYSTEM ──────────────────────────────────────────
+    "Skin — Body Surface":                "Add your description here.",
+    "Nails":                              "Add your description here.",
+ 
   };
+
+  
   const systemDescriptions = {
-    "digestive":"Add your Digestive System description here.","respiratory":"Add your Respiratory System description here.",
-    "circulatory":"Add your Circulatory System description here.","nervous":"Add your Nervous System description here.",
-    "urinary":"Add your Urinary System description here.","endocrine":"Add your Endocrine System description here.",
-    "lymphatic":"Add your Lymphatic/Immune System description here.","reproductive":"Add your Reproductive System description here.",
-    "muscular":"Add your Muscular System description here.","integumentary":"Add your Integumentary System description here.",
-    "skeletal":"Add your Skeletal System description here.",
+    // ── BODY SYSTEM DESCRIPTIONS ──────────────────────────────────────
+    "digestive":      "Add your Digestive System description here.",
+    "respiratory":    "Add your Respiratory System description here.",
+    "circulatory":    "Add your Circulatory System description here.",
+    "nervous":        "Add your Nervous System description here.",
+    "urinary":        "Add your Urinary System description here.",
+    "endocrine":      "Add your Endocrine System description here.",
+    "lymphatic":      "Add your Lymphatic/Immune System description here.",
+    "reproductive":   "Add your Reproductive System description here.",
+    "muscular":       "Add your Muscular System description here.",
+    "integumentary":  "Add your Integumentary System description here.",
+    "skeletal":       "Add your Skeletal System description here.",
   };
+
+
   const typeFullLabels = { bone: 'Skeletal Bone', marking: 'Bone Marking', organ: 'Body System Organ' };
   const typeBarColors  = { bone: '#c8a060', marking: '#e05030', organ: '#8bbcd4' };
   Object.keys(systemDescriptions).forEach(sid => {
